@@ -1,4 +1,4 @@
-# 🧊 Fridge Inventory
+# Fridge Inventory
 
 A personal, local-first PWA for tracking what's in your fridge and freezer, managing expiry dates, building shopping lists, and planning meals.
 
