@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -18,15 +18,17 @@ import { useInventoryStore } from '../store/inventoryStore'
 import { useShoppingStore } from '../store/shoppingStore'
 import { useMealToTryStore } from '../store/mealToTryStore'
 import { useRecipeBlogStore } from '../store/recipeBlogStore'
+import { useMealTrackerStore } from '../store/mealTrackerStore'
+import { getWeekDays as getTrackerWeekDays } from '../store/mealTrackerStore'
 import { MealForm } from '../components/MealForm'
 import { MealToTryForm } from '../components/MealToTryForm'
-import type { Ingredient, Meal, MealPlanDay, MealSlot, MealToTry } from '../types'
+import type { Ingredient, Meal, MealPlanDay, MealSlot, MealToTry, TrackedSlot } from '../types'
 import {
   MEAL_SLOTS, MEAL_SLOT_LABELS,
   COOKING_TIME_LABELS, COOKING_TIME_BADGE,
   INGREDIENT_ROLE_BADGE_DISPLAY,
 } from '../types'
-import { ForkKnife, Plus, PencilSimple, Trash, X, ArrowLeft, ArrowRight, ShoppingCart, ChartBar, ArrowSquareOut, UploadSimple, Sparkle, Lightning, Link, CheckCircle } from '@phosphor-icons/react'
+import { ForkKnife, Plus, PencilSimple, Trash, X, ArrowLeft, ArrowRight, ShoppingCart, ChartBar, ArrowSquareOut, UploadSimple, Sparkle, Lightning, Link, CheckCircle, ClipboardText, Prohibit, WarningCircle, SmileyWink, Download, Upload } from '@phosphor-icons/react'
 import { CATEGORY_ICONS } from '../components/CatalogFilters'
 import { CATEGORY_LABELS, CATEGORY_ORDER } from '../store/ingredientStore'
 
@@ -73,7 +75,7 @@ interface Props {
 }
 
 export function MealsPage({ onNavigateToShopping }: Props) {
-  const [subTab, setSubTab] = useState<'gallery' | 'planner' | 'to-try'>('planner')
+  const [subTab, setSubTab] = useState<'gallery' | 'planner' | 'to-try' | 'tracker'>('planner')
   const [showForm, setShowForm] = useState(false)
   const [editMeal, setEditMeal] = useState<Meal | undefined>()
   const [activeMeal, setActiveMeal] = useState<Meal | null>(null)
@@ -88,6 +90,9 @@ export function MealsPage({ onNavigateToShopping }: Props) {
   const [showToTryForm, setShowToTryForm] = useState(false)
   const [editToTry, setEditToTry] = useState<MealToTry | undefined>()
   const [convertToTry, setConvertToTry] = useState<MealToTry | undefined>()
+  // Tracker state
+  const [trackerWeekStart, setTrackerWeekStart] = useState<string>(() => getMonday())
+  const [trackerImportMsg, setTrackerImportMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
   const { meals, loadMeals, addMeal, updateMeal, deleteMeal } = useMealStore()
   const { plan, weekStart, loading: planLoading, loadWeek, addMealToDay, removeMealFromDay, toggleSlotEatingOut, toggleHighEnergy, addSnackIngredient, removeSnackIngredient, addTryMealToSlot, removeTryMealFromSlot } = useWeekPlannerStore()
@@ -95,6 +100,7 @@ export function MealsPage({ onNavigateToShopping }: Props) {
   const { items: inventory, loadInventory } = useInventoryStore()
   const { loadOrCreateList, bulkAddToActual } = useShoppingStore()
   const { mealsToTry, loadMealsToTry, addMealToTry, updateMealToTry, deleteMealToTry, markTried } = useMealToTryStore()
+  const { tracker, loadWeek: loadTrackerWeek, initFromPlan, updateSlot, clearWeek, exportCSV, importCSV } = useMealTrackerStore()
 
   const weekDays = useMemo(() => getWeekDays(weekStart), [weekStart])
 
@@ -106,6 +112,10 @@ export function MealsPage({ onNavigateToShopping }: Props) {
     loadInventory()
     loadMealsToTry()
   }, [loadMeals, loadIngredients, loadWeek, loadOrCreateList, loadInventory, loadMealsToTry])
+
+  useEffect(() => {
+    loadTrackerWeek(trackerWeekStart)
+  }, [trackerWeekStart, loadTrackerWeek])
 
   useEffect(() => {
     if (!selectedDay && weekDays.length) {
@@ -234,6 +244,13 @@ export function MealsPage({ onNavigateToShopping }: Props) {
         >
           <Sparkle size={14} weight={subTab === 'to-try' ? 'fill' : 'regular'} />
           Meals to try {mealsToTry.filter(m => !m.tried).length > 0 && <span className="badge badge-sm ml-0.5">{mealsToTry.filter(m => !m.tried).length}</span>}
+        </button>
+        <button
+          className={`btn join-item gap-1.5 ${subTab === 'tracker' ? 'btn-secondary' : 'btn-ghost border border-base-300'}`}
+          onClick={() => setSubTab('tracker')}
+        >
+          <ClipboardText size={14} weight={subTab === 'tracker' ? 'fill' : 'regular'} />
+          Tracker
         </button>
       </div>
 
@@ -516,7 +533,44 @@ export function MealsPage({ onNavigateToShopping }: Props) {
         </div>
       )}
 
-      {/* Meal form modal */}
+      {subTab === 'tracker' && (
+        <MealTrackerView
+          trackerWeekStart={trackerWeekStart}
+          tracker={tracker}
+          meals={meals}
+          mealMap={mealMap}
+          ingredientMap={ingredientMap}
+          planForWeek={plan?.weekStartDate === trackerWeekStart ? plan : null}
+          onNavWeek={(offset) => {
+            const [y, m, d] = trackerWeekStart.split('-').map(Number)
+            const base = new Date(y, m - 1, d + offset)
+            setTrackerWeekStart(getMonday(base))
+          }}
+          onInitFromPlan={async () => {
+            if (plan?.weekStartDate === trackerWeekStart && plan.days.length > 0) {
+              await initFromPlan(trackerWeekStart, plan.days)
+            }
+          }}
+          onUpdateSlot={updateSlot}
+          onClear={() => clearWeek(trackerWeekStart)}
+          onExportCSV={() => exportCSV(new Map(meals.map(m => [m.id!, m.name])))}
+          onImportCSV={async (csv) => {
+            const mealMap = new Map(meals.map(m => [m.name.toLowerCase(), m.id!]))
+            const result = await importCSV(csv, mealMap)
+            setTrackerImportMsg({
+              ok: result.errors.length === 0,
+              text: result.errors.length === 0
+                ? `Imported ${result.imported} week(s) successfully`
+                : `Imported ${result.imported} week(s) with ${result.errors.length} errors: ${result.errors.slice(0, 2).join('; ')}`
+            })
+            loadTrackerWeek(trackerWeekStart)
+            setTimeout(() => setTrackerImportMsg(null), 5000)
+          }}
+          importMsg={trackerImportMsg}
+        />
+      )}
+
+
       {showForm && (
         <MealForm
           meal={editMeal}
@@ -1265,6 +1319,407 @@ function TryMealPickerModal({ mealsToTry, plannedIds, onAdd, onClose }: {
       </div>
       <div className="modal-backdrop" onClick={onClose} />
     </dialog>
+  )
+}
+
+// ── Meal Tracker ─────────────────────────────────────────────────────────────
+
+const DAY_ABBREV = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+function MealTrackerView({
+  trackerWeekStart, tracker, meals, mealMap, ingredientMap, planForWeek,
+  onNavWeek, onInitFromPlan, onUpdateSlot, onClear, onExportCSV, onImportCSV, importMsg
+}: {
+  trackerWeekStart: string
+  tracker: ReturnType<typeof useMealTrackerStore.getState>['tracker']
+  meals: Meal[]
+  mealMap: Map<number, Meal>
+  ingredientMap: Map<number, Ingredient>
+  planForWeek: { days: MealPlanDay[] } | null
+  onNavWeek: (offset: number) => void
+  onInitFromPlan: () => Promise<void>
+  onUpdateSlot: (date: string, slot: MealSlot, patch: Partial<TrackedSlot>) => Promise<void>
+  onClear: () => Promise<void>
+  onExportCSV: () => void
+  onImportCSV: (csv: string) => Promise<void>
+  importMsg: { ok: boolean; text: string } | null
+}) {
+  const weekDays = getTrackerWeekDays(trackerWeekStart)
+  const [replaceFor, setReplaceFor] = useState<{ date: string; slot: MealSlot } | null>(null)
+  const importRef = React.useRef<HTMLInputElement>(null)
+
+  const weekLabel = (() => {
+    const [y, m, d] = trackerWeekStart.split('-').map(Number)
+    const start = new Date(y, m - 1, d)
+    const end = new Date(y, m - 1, d + 6)
+    return `${start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${end.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+  })()
+
+  const hasPlan = (planForWeek?.days ?? []).some(d => MEAL_SLOTS.some(s => (d.slots[s]?.length ?? 0) > 0))
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2"><ClipboardText size={22} className="text-secondary" weight="fill" /> Meal Tracker</h1>
+          <p className="text-sm text-base-content/50 mt-0.5">Log what you actually ate — based on your week plan</p>
+        </div>
+        <div className="flex gap-2 items-center flex-wrap">
+          {tracker && (
+            <>
+              <button className="btn btn-ghost btn-sm gap-1.5" onClick={onExportCSV}><Download size={14} /> Export CSV</button>
+              <button className="btn btn-error btn-sm btn-outline gap-1" onClick={() => { if (confirm('Clear all tracking data for this week?')) onClear() }}><Trash size={14} /> Clear week</button>
+            </>
+          )}
+          <label className="btn btn-ghost btn-sm gap-1.5 cursor-pointer">
+            <Upload size={14} /> Import CSV
+            <input ref={importRef} type="file" accept=".csv" className="hidden" onChange={async (e) => {
+              const file = e.target.files?.[0]
+              if (!file) return
+              const text = await file.text()
+              await onImportCSV(text)
+              if (importRef.current) importRef.current.value = ''
+            }} />
+          </label>
+        </div>
+      </div>
+
+      {importMsg && (
+        <div className={`alert ${importMsg.ok ? 'alert-success' : 'alert-warning'} mb-4 py-2 text-sm`}>{importMsg.text}</div>
+      )}
+
+      {/* Week navigation */}
+      <div className="flex items-center gap-3 mb-5">
+        <button className="btn btn-ghost btn-sm" onClick={() => onNavWeek(-7)}><ArrowLeft size={14} /></button>
+        <span className="font-semibold text-sm">{weekLabel}</span>
+        <button className="btn btn-ghost btn-sm" onClick={() => onNavWeek(7)}><ArrowRight size={14} /></button>
+      </div>
+
+      {/* No tracker yet — show plan preview or blank state */}
+      {!tracker ? (
+        <div className="rounded-xl border border-base-300 bg-base-100 p-8 text-center">
+          <ClipboardText size={48} weight="thin" className="mx-auto mb-3 opacity-30" />
+          <p className="font-semibold mb-1">No tracking data for this week</p>
+          {hasPlan ? (
+            <div>
+              <p className="text-sm text-base-content/50 mb-4">You have a meal plan for this week. Initialise the tracker from it, or start blank.</p>
+              <div className="flex gap-2 justify-center flex-wrap">
+                <button className="btn btn-secondary gap-1.5" onClick={onInitFromPlan}><ClipboardText size={15} /> Initialise from plan</button>
+                <button className="btn btn-ghost" onClick={() => onInitFromPlan()}>Start blank</button>
+              </div>
+              <div className="mt-5 max-w-xl mx-auto text-left">
+                <p className="text-xs font-semibold text-base-content/40 uppercase tracking-wide mb-2">Plan preview</p>
+                <div className="grid grid-cols-7 gap-1 text-xs">
+                  {weekDays.map((date, i) => {
+                    const day = planForWeek?.days.find(d => d.date === date)
+                    return (
+                      <div key={date} className="bg-base-200 rounded p-1.5">
+                        <p className="font-bold text-[9px] text-base-content/40 uppercase mb-1">{DAY_ABBREV[i]}</p>
+                        {MEAL_SLOTS.map(slot => {
+                          const ids = day?.slots[slot] ?? []
+                          return ids.length > 0 ? (
+                            <p key={slot} className="text-[9px] text-primary truncate">{mealMap.get(ids[0])?.name ?? '?'}</p>
+                          ) : null
+                        })}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <p className="text-sm text-base-content/50 mb-4">No meal plan for this week either. Start a blank tracker or plan your week first.</p>
+              <button className="btn btn-secondary gap-1.5" onClick={onInitFromPlan}><ClipboardText size={15} /> Start blank tracker</button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* Tracker grid */}
+          <div className="overflow-x-auto">
+            <div className="grid gap-2 min-w-[700px]" style={{ gridTemplateColumns: '80px repeat(7, 1fr)' }}>
+              {/* Header row */}
+              <div />
+              {weekDays.map((date, i) => (
+                <div key={date} className="text-center py-1">
+                  <p className="text-xs font-bold text-base-content/50 uppercase">{DAY_ABBREV[i]}</p>
+                  <p className="text-sm font-bold">{date.split('-')[2]}</p>
+                </div>
+              ))}
+
+              {/* Slot rows */}
+              {MEAL_SLOTS.map(slot => (
+                <React.Fragment key={slot}>
+                  <div className="flex items-center">
+                    <span className="text-xs font-semibold text-base-content/40 uppercase tracking-wide">{MEAL_SLOT_LABELS[slot]}</span>
+                  </div>
+                  {weekDays.map(date => {
+                    const trackedDay = tracker.days.find(d => d.date === date)
+                    const s = trackedDay?.slots[slot]
+                    const displayMeal = s?.actualMealId ? mealMap.get(s.actualMealId) : s?.plannedMealId ? mealMap.get(s.plannedMealId) : null
+                    const displayName = s?.actualMealName ?? displayMeal?.name
+                    const isActualDiff = s?.actualMealId != null || s?.actualMealName != null
+                    return (
+                      <div key={date} className={`rounded-lg border p-1.5 min-h-[64px] flex flex-col gap-0.5 transition-all ${s?.skipped ? 'bg-base-200 border-base-300 opacity-50' : s?.eatingOut ? 'bg-secondary/5 border-secondary/20' : 'bg-base-100 border-base-200 hover:border-base-300'}`}>
+                        {displayName && !s?.skipped && !s?.eatingOut && (
+                          <p className={`text-[10px] leading-tight font-medium truncate ${isActualDiff ? 'text-accent' : 'text-primary'}`} title={displayName}>
+                            {displayName}
+                          </p>
+                        )}
+                        {s?.eatingOut && !s?.skipped && (
+                          <p className="text-[10px] text-secondary flex items-center gap-0.5"><ForkKnife size={9} weight="fill" /> Ate out</p>
+                        )}
+                        {s?.skipped && (
+                          <p className="text-[10px] text-base-content/40 flex items-center gap-0.5"><Prohibit size={9} /> Skipped</p>
+                        )}
+                        {/* Action buttons */}
+                        <div className="flex gap-0.5 mt-auto pt-0.5 flex-wrap">
+                          <button
+                            title={s?.skipped ? 'Undo skip' : 'Mark skipped'}
+                            className={`btn btn-xs p-0 w-5 h-5 min-h-0 ${s?.skipped ? 'btn-error btn-outline' : 'btn-ghost opacity-30 hover:opacity-70'}`}
+                            onClick={() => onUpdateSlot(date, slot, { skipped: !s?.skipped, eatingOut: false })}
+                          >
+                            <Prohibit size={9} />
+                          </button>
+                          <button
+                            title={s?.eatingOut ? 'Undo eating out' : 'Mark eating out'}
+                            className={`btn btn-xs p-0 w-5 h-5 min-h-0 ${s?.eatingOut ? 'btn-secondary btn-outline' : 'btn-ghost opacity-30 hover:opacity-70'}`}
+                            onClick={() => onUpdateSlot(date, slot, { eatingOut: !s?.eatingOut, skipped: false })}
+                          >
+                            <ForkKnife size={9} />
+                          </button>
+                          <button
+                            title="Record what you actually ate"
+                            className="btn btn-ghost btn-xs p-0 w-5 h-5 min-h-0 opacity-30 hover:opacity-70"
+                            onClick={() => setReplaceFor({ date, slot })}
+                          >
+                            <PencilSimple size={9} />
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+
+          {/* Replace/actual meal modal */}
+          {replaceFor && (
+            <ReplaceMealModal
+              date={replaceFor.date}
+              slot={replaceFor.slot}
+              current={tracker.days.find(d => d.date === replaceFor.date)?.slots[replaceFor.slot]}
+              meals={meals}
+              mealMap={mealMap}
+              onSave={async (patch) => { await onUpdateSlot(replaceFor.date, replaceFor.slot, patch); setReplaceFor(null) }}
+              onClose={() => setReplaceFor(null)}
+            />
+          )}
+
+          {/* Feedback panel */}
+          <TrackerFeedback tracker={tracker} mealMap={mealMap} ingredientMap={ingredientMap} />
+        </>
+      )}
+    </div>
+  )
+}
+
+function ReplaceMealModal({ date, slot, current, meals, mealMap, onSave, onClose }: {
+  date: string; slot: MealSlot; current?: TrackedSlot
+  meals: Meal[]; mealMap: Map<number, Meal>
+  onSave: (patch: Partial<TrackedSlot>) => Promise<void>
+  onClose: () => void
+}) {
+  const [search, setSearch] = useState('')
+  const [freeText, setFreeText] = useState(current?.actualMealName ?? '')
+  const [mode, setMode] = useState<'search' | 'freetext'>('search')
+  const results = meals.filter(m => search && m.name.toLowerCase().includes(search.toLowerCase())).slice(0, 6)
+
+  return (
+    <dialog className="modal modal-open">
+      <div className="modal-box w-full max-w-sm">
+        <h3 className="font-bold text-lg mb-1">What did you actually eat?</h3>
+        <p className="text-sm text-base-content/50 mb-3">{date} · {MEAL_SLOT_LABELS[slot]}</p>
+
+        {current?.plannedMealId && (
+          <div className="mb-3 p-2 rounded-lg bg-base-200 text-sm">
+            <span className="text-base-content/50">Planned: </span>
+            <span className="font-medium">{mealMap.get(current.plannedMealId)?.name}</span>
+          </div>
+        )}
+
+        <div className="tabs tabs-bordered mb-3">
+          <button className={`tab ${mode === 'search' ? 'tab-active' : ''}`} onClick={() => setMode('search')}>From meals list</button>
+          <button className={`tab ${mode === 'freetext' ? 'tab-active' : ''}`} onClick={() => setMode('freetext')}>Free text</button>
+        </div>
+
+        {mode === 'search' ? (
+          <div>
+            <input
+              className="input input-bordered w-full input-sm mb-2"
+              placeholder="Search meals…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              autoFocus
+            />
+            {results.length > 0 && (
+              <ul className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+                {results.map(m => (
+                  <li key={m.id}>
+                    <button
+                      className="w-full text-left px-3 py-2 hover:bg-base-200 rounded-lg text-sm"
+                      onClick={() => onSave({ actualMealId: m.id, actualMealName: undefined, skipped: false, eatingOut: false })}
+                    >
+                      {m.name}
+                      {m.cookingTime && <span className={`badge badge-xs ml-1.5 ${COOKING_TIME_BADGE[m.cookingTime]}`}>{COOKING_TIME_LABELS[m.cookingTime]}</span>}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {search && results.length === 0 && (
+              <p className="text-sm text-base-content/40 py-3 text-center">No match — try free text instead</p>
+            )}
+          </div>
+        ) : (
+          <div>
+            <input
+              className="input input-bordered w-full input-sm mb-3"
+              placeholder="e.g. Leftover pasta, takeaway pizza…"
+              value={freeText}
+              onChange={e => setFreeText(e.target.value)}
+              autoFocus
+            />
+            <button
+              className="btn btn-secondary btn-sm w-full"
+              disabled={!freeText.trim()}
+              onClick={() => onSave({ actualMealName: freeText.trim(), actualMealId: undefined, skipped: false, eatingOut: false })}
+            >
+              Save
+            </button>
+          </div>
+        )}
+
+        <div className="modal-action mt-3">
+          {(current?.actualMealId || current?.actualMealName) && (
+            <button className="btn btn-ghost btn-sm text-error" onClick={() => onSave({ actualMealId: undefined, actualMealName: undefined })}>Clear actual</button>
+          )}
+          <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
+        </div>
+      </div>
+      <div className="modal-backdrop" onClick={onClose} />
+    </dialog>
+  )
+}
+
+function TrackerFeedback({ tracker, mealMap, ingredientMap }: {
+  tracker: NonNullable<ReturnType<typeof useMealTrackerStore.getState>['tracker']>
+  mealMap: Map<number, Meal>
+  ingredientMap: Map<number, Ingredient>
+}) {
+  const warnings: string[] = []
+  const positives: string[] = []
+
+  // Count stats
+  let totalSlots = 0, skipped = 0, eatingOut = 0, tracked = 0
+  let proteinDays = 0, fibreDays = 0, vegDays = 0, greensDays = 0
+  let skippedBreakfasts = 0
+
+  const GREEN_TAGS = new Set(['high-vitamin-c', 'high-calcium', 'high-iron', 'low-calorie'])
+
+  for (const day of tracker.days) {
+    let dayHasProtein = false, dayHasFibre = false, dayHasVeg = false, dayHasGreens = false
+
+    for (const slot of MEAL_SLOTS) {
+      const s = day.slots[slot]
+      if (!s) continue
+      totalSlots++
+      if (s.skipped) { skipped++; if (slot === 'breakfast') skippedBreakfasts++; continue }
+      if (s.eatingOut) { eatingOut++; continue }
+      tracked++
+
+      const mealId = s.actualMealId ?? s.plannedMealId
+      if (!mealId) continue
+      const meal = mealMap.get(mealId)
+      if (!meal) continue
+
+      for (const { ingredientId } of meal.ingredients) {
+        const ing = ingredientMap.get(ingredientId)
+        if (!ing) continue
+        const tags = new Set(ing.nutritionTags ?? [])
+        if (tags.has('high-protein')) dayHasProtein = true
+        if (tags.has('high-fibre')) dayHasFibre = true
+        if (ing.category === 'veg') { dayHasVeg = true; if ([...tags].some(t => GREEN_TAGS.has(t))) dayHasGreens = true }
+      }
+    }
+
+    if (dayHasProtein) proteinDays++
+    if (dayHasFibre) fibreDays++
+    if (dayHasVeg) vegDays++
+    if (dayHasGreens) greensDays++
+  }
+
+  // Warnings
+  if (skipped > 5) warnings.push(`You skipped ${skipped} meal slots this week — that's quite a few. Make sure you're still getting enough energy.`)
+  else if (skipped > 2) warnings.push(`${skipped} meals were skipped this week.`)
+  if (skippedBreakfasts >= 4) warnings.push('You skipped breakfast most days — breakfast can help with energy and focus.')
+  if (eatingOut >= 4) warnings.push(`${eatingOut} meals were eaten out — that can make it harder to track nutrition.`)
+  if (vegDays < 4) warnings.push('Fewer than 4 days had vegetables in tracked meals — try to include more veg.')
+  if (greensDays < 3) warnings.push('Not many meals included leafy greens or vitamin-rich veg this week.')
+  if (fibreDays < 4) warnings.push('Fibre intake looks low — try adding more pulses, whole grains or veg.')
+
+  // Positives
+  if (proteinDays >= 6) positives.push('Great protein coverage — most days included a good protein source. 💪')
+  else if (proteinDays >= 4) positives.push('Good protein intake across most of the week.')
+  if (fibreDays >= 5) positives.push('Excellent fibre intake this week — well done! 🌾')
+  if (greensDays >= 5) positives.push('Plenty of greens and vitamin-rich veg in your meals this week. 🥦')
+  if (vegDays >= 6) positives.push('Vegetables featured in almost every day — great balance.')
+  if (skipped === 0 && tracked > 0) positives.push('No meals skipped this week — consistent eating habits!')
+  if (eatingOut === 0 && tracked > 0) positives.push('Cooked at home all week — impressive!')
+
+  if (warnings.length === 0 && positives.length === 0) return null
+
+  return (
+    <div className="mt-6 rounded-xl border border-base-300 bg-base-100 p-5">
+      <h2 className="font-bold text-base mb-3 flex items-center gap-2">
+        <ChartBar size={17} className="text-secondary" /> Weekly summary
+      </h2>
+      <div className="grid sm:grid-cols-2 gap-4">
+        {positives.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-success uppercase tracking-wide mb-2 flex items-center gap-1">
+              <SmileyWink size={13} /> Going well
+            </p>
+            <ul className="flex flex-col gap-1.5">
+              {positives.map((p, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm">
+                  <CheckCircle size={14} className="text-success mt-0.5 flex-shrink-0" weight="fill" />
+                  {p}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {warnings.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-warning uppercase tracking-wide mb-2 flex items-center gap-1">
+              <WarningCircle size={13} /> Worth watching
+            </p>
+            <ul className="flex flex-col gap-1.5">
+              {warnings.map((w, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm">
+                  <WarningCircle size={14} className="text-warning mt-0.5 flex-shrink-0" weight="fill" />
+                  {w}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 

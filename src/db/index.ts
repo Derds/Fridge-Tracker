@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Ingredient, InventoryItem, Meal, MealPlan, MealToTry, ShoppingList } from '../types'
+import type { Ingredient, InventoryItem, Meal, MealPlan, MealToTry, MealTrackerWeek, ShoppingList } from '../types'
 import { SEED_INGREDIENTS, NEW_INGREDIENTS_V3, NEW_INGREDIENTS_V4, NEW_INGREDIENTS_V6 } from '../data/seedIngredients'
 
 export class FridgeDatabase extends Dexie {
@@ -9,6 +9,7 @@ export class FridgeDatabase extends Dexie {
   mealPlans!: Table<MealPlan>
   shoppingLists!: Table<ShoppingList>
   mealsToTry!: Table<MealToTry>
+  mealTrackers!: Table<MealTrackerWeek>
 
   constructor() {
     super('fridge-inventory')
@@ -65,6 +66,11 @@ export class FridgeDatabase extends Dexie {
           await table.add({ ...ing, createdAt: now })
         }
       }
+    })
+
+    // v7: adds mealTrackers table
+    this.version(7).stores({
+      mealTrackers: '++id, weekStartDate',
     })
 
     this.on('populate', () => this.seedIngredients())

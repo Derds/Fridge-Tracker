@@ -145,6 +145,48 @@ export interface MealPlan {
   createdAt: Date
 }
 
+// ── Meal Tracker ─────────────────────────────────────────────────────────────
+
+export interface TrackedSlot {
+  /** Meal ID from the meals list that was planned */
+  plannedMealId?: number
+  /** Meal ID from the meals list that was actually eaten (if replaced) */
+  actualMealId?: number
+  /** Free-text name if what was eaten isn't in the meals list */
+  actualMealName?: string
+  skipped: boolean
+  eatingOut: boolean
+}
+
+export interface TrackedDay {
+  date: string  // ISO date string
+  slots: Record<MealSlot, TrackedSlot>
+}
+
+export function emptyTrackedSlot(): TrackedSlot {
+  return { skipped: false, eatingOut: false }
+}
+
+export function emptyTrackedDay(date: string): TrackedDay {
+  return {
+    date,
+    slots: {
+      breakfast: emptyTrackedSlot(),
+      lunch:     emptyTrackedSlot(),
+      dinner:    emptyTrackedSlot(),
+      snack:     emptyTrackedSlot(),
+    },
+  }
+}
+
+export interface MealTrackerWeek {
+  id?: number
+  weekStartDate: string  // ISO date string, always a Monday
+  days: TrackedDay[]
+  createdAt: Date
+  updatedAt: Date
+}
+
 export interface ShoppingListItem {
   ingredientId: number
   quantity?: number
