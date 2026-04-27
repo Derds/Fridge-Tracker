@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useShoppingStore } from '../store/shoppingStore'
 import { useIngredientStore, CATEGORY_LABELS, CATEGORY_ORDER } from '../store/ingredientStore'
-import { useInventoryStore } from '../store/inventoryStore'
+import { useInventoryStore, calcExpiryDate } from '../store/inventoryStore'
 import { CATEGORY_ICONS } from '../components/CatalogFilters'
 import { IngredientPicker } from '../components/IngredientPicker'
 import type { Ingredient, IngredientCategory, ShoppingListItem } from '../types'
-import { ShoppingCart, Plus, X, Trash } from '@phosphor-icons/react'
+import { ShoppingCart, Plus, X, Trash, CheckCircle } from '@phosphor-icons/react'
 
 export function ShoppingPage() {
   const { list, loading, loadOrCreateList, moveToActual, removeFromActual,
     removeFromPotential, toggleChecked, clearChecked, addManual, bulkRemoveFromActual } = useShoppingStore()
   const { ingredients, loadIngredients } = useIngredientStore()
-  const { items: inventory, loadInventory } = useInventoryStore()
+  const { items: inventory, loadInventory, addItem: addInventoryItem } = useInventoryStore()
   const [addOpen, setAddOpen] = useState(false)
   const [tab, setTab] = useState<'list' | 'suggestions'>('list')
   const [selectMode, setSelectMode] = useState(false)
@@ -85,6 +85,24 @@ export function ShoppingPage() {
     setSelected(new Set())
   }
 
+  async function handleToggleChecked(item: ShoppingListItem) {
+    const isChecking = !item.checked
+    await toggleChecked(item.ingredientId)
+    if (isChecking) {
+      const ingredient = ingredientMap.get(item.ingredientId)
+      if (ingredient) {
+        const now = new Date()
+        await addInventoryItem({
+          ingredientId: item.ingredientId,
+          purchaseDate: now,
+          expiryDate: calcExpiryDate(now, ingredient.shelfLifeTier),
+          servings: 1,
+          servingsRemaining: 1,
+        })
+      }
+    }
+  }
+
   if (loading) return <div className="flex justify-center py-12"><span className="loading loading-spinner loading-lg" /></div>
 
   return (
@@ -93,7 +111,10 @@ export function ShoppingPage() {
         <div>
           <h1 className="text-2xl font-bold">Shopping List</h1>
           {totalCount > 0 && (
-            <p className="text-base-content/60 text-sm mt-1">{checkedCount}/{totalCount} ticked off</p>
+            <p className="text-base-content/60 text-sm mt-1">
+              {checkedCount}/{totalCount} ticked off
+              {checkedCount === 0 && <span className="ml-1 opacity-60">· tick to add to inventory</span>}
+            </p>
           )}
         </div>
         <button className="btn btn-primary btn-sm gap-1" onClick={() => setAddOpen(true)}>
@@ -167,16 +188,22 @@ export function ShoppingPage() {
                           <label
                             key={item.ingredientId}
                             className={`flex items-center gap-3 px-3 py-2 rounded-lg bg-base-200 cursor-pointer ${item.checked && !selectMode ? 'opacity-50' : ''} ${isSelected ? 'ring-2 ring-error/40' : ''}`}
+                            title={!selectMode && !item.checked ? 'Tick to mark as bought and add to inventory' : undefined}
                           >
                             <input
                               type="checkbox"
                               className={`checkbox checkbox-sm ${selectMode ? 'checkbox-error' : 'checkbox-primary'}`}
                               checked={selectMode ? isSelected : item.checked}
-                              onChange={() => selectMode ? toggleSelect(item.ingredientId) : toggleChecked(item.ingredientId)}
+                              onChange={() => selectMode ? toggleSelect(item.ingredientId) : handleToggleChecked(item)}
                             />
                             <span className={`flex-1 ${item.checked && !selectMode ? 'line-through' : ''}`}>
                               {ingredient?.name ?? '—'}
                             </span>
+                            {item.checked && !selectMode && (
+                              <span className="text-success flex items-center gap-1 text-xs">
+                                <CheckCircle size={13} weight="fill" /> in inventory
+                              </span>
+                            )}
                             {!selectMode && (
                               <button
                                 type="button"

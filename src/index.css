@@ -3,31 +3,31 @@
 
 /* ── India palette (flatuicolors.com/palette/in) ──────────────────────────
    Primary:   Fiery Fuchsia  #B33771  — bold magenta, the brand colour
-   Secondary: Bluebell       #3B3B98  — deep indigo
-   Accent:    Honey Glow     #EAB543  — warm amber
-   Neutral:   Ships Officer  #2C3A47  — dark navy, body text
-   Base:      warm cream tints inspired by White Pepper #F8EFBA
-   Info:      Clear Chill    #1B9CFC
-   Success:   Keppel         #58B19F
+   Secondary: Wisteria       #9980FA  — vibrant purple (was dark Bluebell)
+   Accent:    Golden Tainoi  #F9CA24  — bright gold (was muted Honey Glow)
+   Neutral:   Ships Officer  #2C3A47  — dark navy, navbar + body text
+   Base:      fuchsia-tinted warm whites for a distinctly non-default feel
+   Info:      Jade Dust      #00B8E9  — vivid cyan (was flat blue)
+   Success:   Pure Apple     #6AB04C  — vivid green (was muted teal)
    Warning:   Rich Gardenia  #F97F51
    Error:     Georgia Peach  #FD7272
 ──────────────────────────────────────────────────────────────────────────── */
 :root {
   --color-primary:           #B33771;
   --color-primary-content:   #ffffff;
-  --color-secondary:         #3B3B98;
+  --color-secondary:         #9980FA;
   --color-secondary-content: #ffffff;
-  --color-accent:            #EAB543;
+  --color-accent:            #F9CA24;
   --color-accent-content:    #2C3A47;
   --color-neutral:           #2C3A47;
-  --color-neutral-content:   #ffffff;
-  --color-base-100:          #ffffff;
-  --color-base-200:          #f5f0e8;
-  --color-base-300:          #e8dfcc;
+  --color-neutral-content:   #F8EFBA;
+  --color-base-100:          #fef6fb;
+  --color-base-200:          #f9e4f3;
+  --color-base-300:          #f1c8e7;
   --color-base-content:      #2C3A47;
-  --color-info:              #1B9CFC;
+  --color-info:              #00B8E9;
   --color-info-content:      #ffffff;
-  --color-success:           #58B19F;
+  --color-success:           #6AB04C;
   --color-success-content:   #ffffff;
   --color-warning:           #F97F51;
   --color-warning-content:   #ffffff;

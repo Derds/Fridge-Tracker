@@ -26,9 +26,9 @@ function App() {
   return (
     <div className="min-h-screen bg-base-100 flex flex-col">
       {/* Top navbar */}
-      <header className="navbar bg-base-200 shadow-sm sticky top-0 z-10">
+      <header className="navbar bg-neutral text-neutral-content shadow-sm sticky top-0 z-10">
         <div className="navbar-start">
-          <span className="flex items-center gap-1.5 text-lg font-bold text-primary ml-2">
+          <span className="flex items-center gap-1.5 text-lg font-bold text-accent ml-2">
             <Leaf size={20} weight="fill" />
             Fridge
           </span>
@@ -38,7 +38,7 @@ function App() {
             <button
               key={id}
               onClick={() => setPage(id)}
-              className={`btn btn-sm gap-1.5 ${page === id ? 'btn-primary' : 'btn-ghost'}`}
+              className={`btn btn-sm gap-1.5 ${page === id ? 'btn-primary' : 'btn-ghost text-neutral-content hover:bg-neutral-content/10'}`}
             >
               <NavIcon size={16} weight={page === id ? 'fill' : 'regular'} />
               {label}
@@ -56,12 +56,12 @@ function App() {
       </main>
 
       {/* Bottom tab bar — mobile only */}
-      <nav className="btm-nav sm:hidden">
+      <nav className="btm-nav sm:hidden bg-neutral text-neutral-content">
         {NAV.map(({ id, label, Icon: NavIcon }) => (
           <button
             key={id}
             onClick={() => setPage(id)}
-            className={page === id ? 'active text-primary' : ''}
+            className={page === id ? 'active text-primary' : 'text-neutral-content/60'}
           >
             <NavIcon size={22} weight={page === id ? 'fill' : 'regular'} />
             <span className="btm-nav-label">{label}</span>
