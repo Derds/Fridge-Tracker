@@ -6,8 +6,10 @@ import {
   expiryBadgeClass,
 } from '../store/inventoryStore'
 import { AddToInventoryModal } from '../components/AddToInventoryModal'
-import { CATEGORY_LABELS } from '../store/ingredientStore'
+import { CATEGORY_LABELS, CATEGORY_ORDER } from '../store/ingredientStore'
+import { CATEGORY_ICONS } from '../components/CatalogFilters'
 import { Warning, Basket, Trash, Clock, SortAscending, Tag, Plus } from '@phosphor-icons/react'
+import type { IngredientCategory } from '../types'
 
 type SortMode = 'expiry' | 'category' | 'name'
 
@@ -28,6 +30,19 @@ export function InventoryPage() {
     if (sort === 'name') return list.sort((a, b) => a.ingredientName.localeCompare(b.ingredientName))
     if (sort === 'category') return list.sort((a, b) => a.ingredientCategory.localeCompare(b.ingredientCategory) || a.ingredientName.localeCompare(b.ingredientName))
     return list
+  }, [activeItems, sort])
+
+  // Grouped view — only used when sort === 'category'
+  const groupedByCategory = useMemo(() => {
+    if (sort !== 'category') return null
+    return CATEGORY_ORDER
+      .map(cat => ({
+        cat,
+        items: activeItems
+          .filter(i => i.ingredientCategory === cat)
+          .sort((a, b) => a.ingredientName.localeCompare(b.ingredientName)),
+      }))
+      .filter(g => g.items.length > 0)
   }, [activeItems, sort])
 
   return (
@@ -65,11 +80,33 @@ export function InventoryPage() {
       )}
 
       {/* Active items */}
-      <div className="flex flex-col gap-2">
-        {sorted.map(item => (
-          <InventoryCard key={item.id} item={item} onDeplete={depleteItem} onIncrement={incrementItem} onRemove={removeItem} />
-        ))}
-      </div>
+      {groupedByCategory ? (
+        <div className="flex flex-col gap-6">
+          {groupedByCategory.map(({ cat, items: catItems }) => {
+            const CatIcon = CATEGORY_ICONS[cat as IngredientCategory]
+            return (
+              <div key={cat}>
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-base-content/50 uppercase tracking-wide mb-2">
+                  <CatIcon size={13} />
+                  <span>{CATEGORY_LABELS[cat as keyof typeof CATEGORY_LABELS] ?? cat}</span>
+                  <span className="font-normal normal-case tracking-normal opacity-60">· {catItems.length}</span>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  {catItems.map(item => (
+                    <InventoryCard key={item.id} item={item} onDeplete={depleteItem} onIncrement={incrementItem} onRemove={removeItem} hideCategory />
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          {sorted.map(item => (
+            <InventoryCard key={item.id} item={item} onDeplete={depleteItem} onIncrement={incrementItem} onRemove={removeItem} />
+          ))}
+        </div>
+      )}
 
       {/* Expired items — collapsed, at the bottom */}
       {expiredItems.length > 0 && (
@@ -79,7 +116,7 @@ export function InventoryPage() {
               <Warning size={15} weight="fill" />
               {expiredItems.length} expired item{expiredItems.length !== 1 ? 's' : ''} — tap to review
             </summary>
-            <div className="flex flex-col gap-1 mt-2">
+            <div className="flex flex-col gap-1.5 mt-2">
               {expiredItems.map(item => (
                 <InventoryCard key={item.id} item={item} onDeplete={depleteItem} onIncrement={incrementItem} onRemove={removeItem} />
               ))}
@@ -119,9 +156,10 @@ interface CardProps {
   onDeplete: (id: number) => Promise<void>
   onIncrement: (id: number) => Promise<void>
   onRemove: (id: number) => Promise<void>
+  hideCategory?: boolean
 }
 
-function InventoryCard({ item, onDeplete, onIncrement, onRemove }: CardProps) {
+function InventoryCard({ item, onDeplete, onIncrement, onRemove, hideCategory }: CardProps) {
   const days = daysUntilExpiry(item.expiryDate)
   const label = expiryLabel(days)
   const badgeClass = expiryBadgeClass(days)
@@ -129,13 +167,15 @@ function InventoryCard({ item, onDeplete, onIncrement, onRemove }: CardProps) {
 
   return (
     <div className={`card card-compact bg-base-200 ${days < 0 ? 'opacity-60' : ''}`}>
-      <div className="card-body flex-row items-center gap-3 py-3">
-        <div className="flex-1 min-w-0">
-          <p className="font-medium truncate">{item.ingredientName}</p>
-          <div className="flex flex-wrap items-center gap-1 mt-1">
-            <span className={`badge badge-sm ${badgeClass}`}>{label}</span>
+      <div className="card-body flex-row items-center gap-3 py-2.5 px-3">
+
+        {/* Inline name + badges */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 flex-1 min-w-0">
+          <span className="font-semibold text-primary">{item.ingredientName}</span>
+          <span className={`badge badge-sm ${badgeClass}`}>{label}</span>
+          {!hideCategory && (
             <span className="text-xs text-base-content/40">{categoryLabel}</span>
-          </div>
+          )}
         </div>
 
         {/* Serving counter */}
@@ -148,7 +188,7 @@ function InventoryCard({ item, onDeplete, onIncrement, onRemove }: CardProps) {
           >
             −
           </button>
-          <span className="text-sm text-base-content/60 min-w-[2.5rem] text-center">
+          <span className="text-sm text-base-content/60 min-w-[2.5rem] text-center tabular-nums">
             {item.servingsRemaining}/{item.servings}
           </span>
           <button

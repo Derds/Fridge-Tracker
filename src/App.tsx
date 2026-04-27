@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { ListBullets, Package, ShoppingCart, ForkKnife, Leaf, type Icon } from '@phosphor-icons/react'
+import { ListBullets, Package, ShoppingCart, ForkKnife, Leaf, Gear, type Icon } from '@phosphor-icons/react'
 import { CatalogPage } from './pages/CatalogPage'
 import { InventoryPage } from './pages/InventoryPage'
 import { ShoppingPage } from './pages/ShoppingPage'
 import { MealsPage } from './pages/MealsPage'
+import { SettingsPage } from './pages/SettingsPage'
 
-type Page = 'catalog' | 'inventory' | 'shopping' | 'meals'
+type Page = 'catalog' | 'inventory' | 'shopping' | 'meals' | 'settings'
 
 interface NavItem {
   id: Page
@@ -14,9 +15,9 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { id: 'meals',     label: 'Meals',     Icon: ForkKnife   },
-  { id: 'inventory', label: 'Inventory', Icon: Package     },
-  { id: 'shopping',  label: 'Shopping',  Icon: ShoppingCart },
+  { id: 'meals',     label: 'Meals',       Icon: ForkKnife   },
+  { id: 'inventory', label: 'Inventory',   Icon: Package     },
+  { id: 'shopping',  label: 'Shopping',    Icon: ShoppingCart },
   { id: 'catalog',   label: 'Ingredients', Icon: ListBullets },
 ]
 
@@ -44,6 +45,14 @@ function App() {
               {label}
             </button>
           ))}
+          {/* Settings — separate from main nav so it doesn't crowd */}
+          <button
+            onClick={() => setPage('settings')}
+            className={`btn btn-sm btn-square ml-1 ${page === 'settings' ? 'btn-primary' : 'btn-ghost text-neutral-content hover:bg-neutral-content/10'}`}
+            title="Settings"
+          >
+            <Gear size={17} weight={page === 'settings' ? 'fill' : 'regular'} />
+          </button>
         </div>
       </header>
 
@@ -53,6 +62,7 @@ function App() {
         {page === 'inventory' && <InventoryPage />}
         {page === 'shopping'  && <ShoppingPage />}
         {page === 'meals'     && <MealsPage onNavigateToShopping={() => setPage('shopping')} />}
+        {page === 'settings'  && <SettingsPage />}
       </main>
 
       {/* Bottom tab bar — mobile only */}
@@ -67,6 +77,13 @@ function App() {
             <span className="btm-nav-label">{label}</span>
           </button>
         ))}
+        <button
+          onClick={() => setPage('settings')}
+          className={page === 'settings' ? 'active text-primary' : 'text-neutral-content/60'}
+        >
+          <Gear size={22} weight={page === 'settings' ? 'fill' : 'regular'} />
+          <span className="btm-nav-label">Settings</span>
+        </button>
       </nav>
     </div>
   )

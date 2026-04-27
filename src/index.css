@@ -35,3 +35,51 @@
   --color-error-content:     #ffffff;
 }
 
+/* ── Classic theme — warm cream with deep indigo ──────────────────────── */
+[data-theme="classic"] {
+  --color-primary:           #B33771;
+  --color-primary-content:   #ffffff;
+  --color-secondary:         #3B3B98;
+  --color-secondary-content: #ffffff;
+  --color-accent:            #EAB543;
+  --color-accent-content:    #2C3A47;
+  --color-neutral:           #2C3A47;
+  --color-neutral-content:   #F8EFBA;
+  --color-base-100:          #faf7f0;
+  --color-base-200:          #f0e9d8;
+  --color-base-300:          #e2d5bc;
+  --color-base-content:      #2C3A47;
+  --color-info:              #1B9CFC;
+  --color-info-content:      #ffffff;
+  --color-success:           #58B19F;
+  --color-success-content:   #ffffff;
+  --color-warning:           #F97F51;
+  --color-warning-content:   #ffffff;
+  --color-error:             #FD7272;
+  --color-error-content:     #ffffff;
+}
+
+/* ── Dark theme — deep navy with vibrant India accents ────────────────── */
+[data-theme="dark"] {
+  --color-primary:           #ED4C67;
+  --color-primary-content:   #ffffff;
+  --color-secondary:         #9980FA;
+  --color-secondary-content: #ffffff;
+  --color-accent:            #F9CA24;
+  --color-accent-content:    #1a1a2e;
+  --color-neutral:           #0f1923;
+  --color-neutral-content:   #F8EFBA;
+  --color-base-100:          #1a1a2e;
+  --color-base-200:          #16213e;
+  --color-base-300:          #0f3460;
+  --color-base-content:      #e2e8f0;
+  --color-info:              #00B8E9;
+  --color-info-content:      #ffffff;
+  --color-success:           #6AB04C;
+  --color-success-content:   #ffffff;
+  --color-warning:           #F97F51;
+  --color-warning-content:   #ffffff;
+  --color-error:             #FD7272;
+  --color-error-content:     #ffffff;
+}
+
