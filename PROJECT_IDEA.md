@@ -26,3 +26,13 @@ future ideas
 - shopping list planning -> help the user create a list of food and understand if they are over/undershopping for the week (maybe based on asking how many meals the user will be at home/out for and help the user to understand if the meals they have time for are super quick grab and go meals or more involved cooking.)
 - price estimations for a shopping trip my web searching specific supermarkets.
 - images of meals  - i should be able to upload an image of my meal and save a compressed/low quality dithered image of it so i can see a gallery of what i might want to eat
+
+
+Further ideas
+- visuals with a drag and drop meal planner to see if your day is too high in fat / low in veg
+- veggie and vegan swap suggestions
+- graphs to see how well you are eating (big picture)
+- cycle synced suggestions -> future integration
+- hooks to tidy up dependancies and update security issues
+- connect key details to sync thing?
+- 

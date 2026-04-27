@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { CatalogPage } from './pages/CatalogPage'
+import { InventoryPage } from './pages/InventoryPage'
+import { ShoppingPage } from './pages/ShoppingPage'
 
 type Page = 'catalog' | 'inventory' | 'shopping' | 'meals'
 
@@ -45,8 +47,8 @@ function App() {
       {/* Page content */}
       <main className="flex-1 pb-20 sm:pb-0">
         {page === 'catalog' && <CatalogPage />}
-        {page === 'inventory' && <ComingSoon label="Fridge inventory" />}
-        {page === 'shopping' && <ComingSoon label="Shopping list" />}
+        {page === 'inventory' && <InventoryPage />}
+        {page === 'shopping' && <ShoppingPage />}
         {page === 'meals' && <ComingSoon label="Meal planning" />}
       </main>
 

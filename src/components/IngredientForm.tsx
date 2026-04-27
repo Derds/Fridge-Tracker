@@ -1,9 +1,14 @@
 import { useState } from 'react'
-import type { Ingredient, IngredientCategory, ShelfLifeTier } from '../types'
+import type { Ingredient, IngredientCategory, ShelfLifeTier, NutritionTag } from '../types'
 import { CATEGORY_LABELS, SHELF_LIFE_LABELS, useIngredientStore } from '../store/ingredientStore'
 
 const CATEGORIES: IngredientCategory[] = ['fruit', 'veg', 'meat-protein', 'dairy', 'shelf-staple', 'frozen', 'snacks', 'seasoning', 'other']
 const SHELF_LIFE_TIERS: ShelfLifeTier[] = ['very-perishable', 'perishable', 'stable', 'shelf-stable']
+const ALL_TAGS: NutritionTag[] = [
+  'high-protein', 'high-fibre', 'high-carb', 'high-fat', 'high-iron',
+  'high-calcium', 'high-magnesium', 'high-vitamin-c', 'high-vitamin-d', 'high-omega-3',
+  'low-calorie', 'low-fat', 'low-carb', 'low-sugar', 'low-sodium',
+]
 
 interface Props {
   ingredient?: Ingredient
@@ -18,6 +23,7 @@ export function IngredientForm({ ingredient, onClose }: Props) {
   const [category, setCategory] = useState<IngredientCategory>(ingredient?.category ?? 'other')
   const [shelfLifeTier, setShelfLifeTier] = useState<ShelfLifeTier>(ingredient?.shelfLifeTier ?? 'perishable')
   const [storageNotes, setStorageNotes] = useState(ingredient?.storageNotes ?? '')
+  const [nutritionTags, setNutritionTags] = useState<NutritionTag[]>(ingredient?.nutritionTags ?? [])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -28,9 +34,9 @@ export function IngredientForm({ ingredient, onClose }: Props) {
     setError('')
     try {
       if (isEdit && ingredient.id != null) {
-        await updateIngredient(ingredient.id, { name: name.trim(), category, shelfLifeTier, storageNotes: storageNotes.trim() || undefined })
+        await updateIngredient(ingredient.id, { name: name.trim(), category, shelfLifeTier, storageNotes: storageNotes.trim() || undefined, nutritionTags: nutritionTags.length ? nutritionTags : undefined })
       } else {
-        await addIngredient({ name: name.trim(), category, shelfLifeTier, storageNotes: storageNotes.trim() || undefined })
+        await addIngredient({ name: name.trim(), category, shelfLifeTier, storageNotes: storageNotes.trim() || undefined, nutritionTags: nutritionTags.length ? nutritionTags : undefined })
       }
       onClose()
     } catch (e) {
@@ -85,6 +91,25 @@ export function IngredientForm({ ingredient, onClose }: Props) {
               rows={2}
             />
           </label>
+
+          <div className="form-control">
+            <div className="label"><span className="label-text">Nutrition tags <span className="text-base-content/50">(optional)</span></span></div>
+            <div className="flex flex-wrap gap-1">
+              {ALL_TAGS.map(tag => {
+                const active = nutritionTags.includes(tag)
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => setNutritionTags(active ? nutritionTags.filter(t => t !== tag) : [...nutritionTags, tag])}
+                    className={`badge cursor-pointer select-none ${active ? 'badge-primary' : 'badge-ghost'}`}
+                  >
+                    {tag}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
 
           {error && <p className="text-error text-sm">{error}</p>}
 

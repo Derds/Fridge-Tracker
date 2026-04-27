@@ -80,6 +80,9 @@ export function CatalogPage() {
                     <p className="font-medium truncate">{ingredient.name}</p>
                     <div className="flex flex-wrap gap-1 mt-1">
                       <ShelfLifeBadge tier={ingredient.shelfLifeTier} />
+                      {ingredient.nutritionTags?.map(tag => (
+                        <span key={tag} className="badge badge-ghost badge-sm">{tag}</span>
+                      ))}
                     </div>
                     {ingredient.storageNotes && (
                       <p className="text-xs text-base-content/50 mt-1 truncate">{ingredient.storageNotes}</p>

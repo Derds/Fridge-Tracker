@@ -1,3 +1,20 @@
+export type NutritionTag =
+  | 'high-protein'
+  | 'high-fibre'
+  | 'high-carb'
+  | 'high-fat'
+  | 'high-iron'
+  | 'high-calcium'
+  | 'high-magnesium'
+  | 'high-vitamin-c'
+  | 'high-vitamin-d'
+  | 'high-omega-3'
+  | 'low-calorie'
+  | 'low-fat'
+  | 'low-carb'
+  | 'low-sugar'
+  | 'low-sodium'
+
 export type IngredientCategory =
   | 'fruit'
   | 'veg'
@@ -21,6 +38,7 @@ export interface Ingredient {
   category: IngredientCategory
   shelfLifeTier: ShelfLifeTier
   storageNotes?: string
+  nutritionTags?: NutritionTag[]
   createdAt: Date
 }
 

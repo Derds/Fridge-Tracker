@@ -20,6 +20,11 @@ export class FridgeDatabase extends Dexie {
       shoppingLists: '++id, createdAt',
     })
 
+    // v2: adds nutritionTags to ingredients (multi-value index)
+    this.version(2).stores({
+      ingredients: '++id, name, category, shelfLifeTier, *nutritionTags',
+    })
+
     this.on('populate', () => this.seedIngredients())
   }
 
