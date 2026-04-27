@@ -12,7 +12,7 @@ import { Warning, Basket, Trash, Clock, SortAscending, Tag, Plus } from '@phosph
 type SortMode = 'expiry' | 'category' | 'name'
 
 export function InventoryPage() {
-  const { items, loading, loadInventory, addItem, depleteItem, removeItem, clearExpired } = useInventoryStore()
+  const { items, loading, loadInventory, addItem, depleteItem, incrementItem, removeItem, clearExpired } = useInventoryStore()
   const [addOpen, setAddOpen] = useState(false)
   const [sort, setSort] = useState<SortMode>('expiry')
   const [confirmClearExpired, setConfirmClearExpired] = useState(false)
@@ -67,7 +67,7 @@ export function InventoryPage() {
       {/* Active items */}
       <div className="flex flex-col gap-2">
         {sorted.map(item => (
-          <InventoryCard key={item.id} item={item} onDeplete={depleteItem} onRemove={removeItem} />
+          <InventoryCard key={item.id} item={item} onDeplete={depleteItem} onIncrement={incrementItem} onRemove={removeItem} />
         ))}
       </div>
 
@@ -81,7 +81,7 @@ export function InventoryPage() {
             </summary>
             <div className="flex flex-col gap-1 mt-2">
               {expiredItems.map(item => (
-                <InventoryCard key={item.id} item={item} onDeplete={depleteItem} onRemove={removeItem} />
+                <InventoryCard key={item.id} item={item} onDeplete={depleteItem} onIncrement={incrementItem} onRemove={removeItem} />
               ))}
               <button className="btn btn-sm btn-outline btn-warning mt-1 self-start" onClick={() => setConfirmClearExpired(true)}>
                 Clear all expired
@@ -117,10 +117,11 @@ export function InventoryPage() {
 interface CardProps {
   item: ReturnType<typeof useInventoryStore.getState>['items'][number]
   onDeplete: (id: number) => Promise<void>
+  onIncrement: (id: number) => Promise<void>
   onRemove: (id: number) => Promise<void>
 }
 
-function InventoryCard({ item, onDeplete, onRemove }: CardProps) {
+function InventoryCard({ item, onDeplete, onIncrement, onRemove }: CardProps) {
   const days = daysUntilExpiry(item.expiryDate)
   const label = expiryLabel(days)
   const badgeClass = expiryBadgeClass(days)
@@ -139,16 +140,24 @@ function InventoryCard({ item, onDeplete, onRemove }: CardProps) {
 
         {/* Serving counter */}
         <div className="flex items-center gap-1 shrink-0">
-          <span className="text-sm text-base-content/60">
-            {item.servingsRemaining}/{item.servings}
-          </span>
           <button
             className="btn btn-outline btn-xs btn-square"
             onClick={() => item.id != null && onDeplete(item.id)}
             aria-label="Use one serving"
-            title="Use one serving"
+            title="Use one serving (−1)"
           >
             −
+          </button>
+          <span className="text-sm text-base-content/60 min-w-[2.5rem] text-center">
+            {item.servingsRemaining}/{item.servings}
+          </span>
+          <button
+            className="btn btn-outline btn-xs btn-square btn-success"
+            onClick={() => item.id != null && onIncrement(item.id)}
+            aria-label="Add one serving"
+            title="Add one serving — e.g. leftovers (+1)"
+          >
+            +
           </button>
         </div>
 

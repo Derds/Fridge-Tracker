@@ -131,7 +131,6 @@ export function MealForm({ meal, onSave, onClose }: Props) {
                       <span className="flex-1 text-sm">{ing?.name ?? '—'}</span>
                       <button
                         type="button"
-                        title="Click to change role"
                         onClick={() => cycleRole(entry.ingredientId)}
                         className={`btn btn-xs cursor-pointer select-none transition-colors ${roleBadge ?? 'btn-outline btn-ghost'}`}
                         title="Click to cycle: core → optional → substitute"

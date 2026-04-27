@@ -16,6 +16,7 @@ interface InventoryStore {
   loadInventory: () => Promise<void>
   addItem: (item: Omit<InventoryItem, 'id' | 'addedAt'>) => Promise<void>
   depleteItem: (id: number) => Promise<void>   // reduce servingsRemaining by 1
+  incrementItem: (id: number) => Promise<void> // add one serving (e.g. leftovers)
   removeItem: (id: number) => Promise<void>
   clearExpired: (keepIds?: number[]) => Promise<void>
 }
@@ -60,6 +61,14 @@ export const useInventoryStore = create<InventoryStore>((set, get) => ({
     } else {
       await db.inventory.update(id, { servingsRemaining: item.servingsRemaining - 1 })
     }
+    await get().loadInventory()
+  },
+
+  incrementItem: async (id) => {
+    const item = await db.inventory.get(id)
+    if (!item) return
+    // Allow going above original servings count (e.g. leftovers added)
+    await db.inventory.update(id, { servingsRemaining: item.servingsRemaining + 1 })
     await get().loadInventory()
   },
 

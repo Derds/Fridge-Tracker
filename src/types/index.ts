@@ -59,6 +59,7 @@ export type NutritionTag =
   | 'low-calorie'
   | 'low-fat'
   | 'low-carb'
+  | 'high-sugar'
   | 'low-sugar'
   | 'low-sodium'
 

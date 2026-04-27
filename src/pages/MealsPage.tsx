@@ -40,7 +40,7 @@ export function MealsPage({ onNavigateToShopping }: Props) {
   const [activeMeal, setActiveMeal] = useState<Meal | null>(null)
   const [addMealForSlot, setAddMealForSlot] = useState<{ date: string; slot: MealSlot } | null>(null)
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
-  const [reviewItems, setReviewItems] = useState<Ingredient[] | null>(null)
+  const [reviewItems, setReviewItems] = useState<{ ingredient: Ingredient; isCore: boolean }[] | null>(null)
 
   const { meals, loadMeals, addMeal, updateMeal, deleteMeal } = useMealStore()
   const { plan, weekStart, loading: planLoading, loadWeek, addMealToDay, removeMealFromDay } = useWeekPlannerStore()
@@ -98,16 +98,30 @@ export function MealsPage({ onNavigateToShopping }: Props) {
   async function handleGenerateShopping() {
     if (!plan) return
     const inStock = new Set(inventory.filter(i => i.servingsRemaining > 0).map(i => i.ingredientId))
-    const needed = new Set<number>()
+    // Track each needed ingredient and whether it appears as 'core' in any planned meal
+    const neededRoles = new Map<number, boolean>() // ingredientId → hasCore
     for (const day of plan.days) {
       for (const slot of MEAL_SLOTS) {
         for (const mealId of day.slots[slot]) {
           const meal = mealMap.get(mealId)
-          if (meal) meal.ingredients.forEach(({ ingredientId }) => needed.add(ingredientId))
+          if (meal) {
+            meal.ingredients.forEach(({ ingredientId, role }) => {
+              const isCore = role === 'core' || role == null
+              // Once marked core, stays core even if optional in another meal
+              neededRoles.set(ingredientId, (neededRoles.get(ingredientId) ?? false) || isCore)
+            })
+          }
         }
       }
     }
-    const missing = [...needed].filter(id => !inStock.has(id)).map(id => ingredientMap.get(id)).filter(Boolean) as Ingredient[]
+    const missing = [...neededRoles.entries()]
+      .filter(([id]) => !inStock.has(id))
+      .map(([id, isCore]) => {
+        const ingredient = ingredientMap.get(id)
+        return ingredient ? { ingredient, isCore } : null
+      })
+      .filter(Boolean) as { ingredient: Ingredient; isCore: boolean }[]
+
     if (missing.length === 0) {
       alert('You already have everything in stock for this week\'s meals! 🎉')
       return
@@ -550,16 +564,22 @@ function AddMealToDayModal({ meals, slot, plannedMealIds, onAdd, onClose }: {
 }
 
 function ShoppingReviewModal({ items, onConfirm, onClose }: {
-  items: Ingredient[]
+  items: { ingredient: Ingredient; isCore: boolean }[]
   onConfirm: (selected: number[]) => Promise<void>
   onClose: () => void
 }) {
-  const [selected, setSelected] = useState<Set<number>>(new Set(items.map(i => i.id!)))
+  // Pre-select only core ingredients
+  const coreIds = items.filter(i => i.isCore).map(i => i.ingredient.id!)
+  const [selected, setSelected] = useState<Set<number>>(new Set(coreIds))
 
-  const grouped = CATEGORY_ORDER.map(cat => ({
-    cat,
-    items: items.filter(i => i.category === cat),
-  })).filter(g => g.items.length > 0)
+  const coreItems = items.filter(i => i.isCore)
+  const optionalItems = items.filter(i => !i.isCore)
+
+  const grouped = (subset: Ingredient[]) =>
+    CATEGORY_ORDER.map(cat => ({
+      cat,
+      items: subset.filter(i => i.category === cat),
+    })).filter(g => g.items.length > 0)
 
   function toggle(id: number) {
     setSelected(prev => {
@@ -569,41 +589,95 @@ function ShoppingReviewModal({ items, onConfirm, onClose }: {
     })
   }
 
+  function toggleAll(ids: number[], checked: boolean) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      ids.forEach(id => checked ? next.add(id) : next.delete(id))
+      return next
+    })
+  }
+
+  function IngredientGroup({ title, subtitle, ingredients, accent }: {
+    title: string
+    subtitle: string
+    ingredients: Ingredient[]
+    accent: string
+  }) {
+    if (ingredients.length === 0) return null
+    const ids = ingredients.map(i => i.id!)
+    const allChecked = ids.every(id => selected.has(id))
+    return (
+      <div>
+        <div className={`flex items-center justify-between mb-2 pb-1.5 border-b ${accent}`}>
+          <div>
+            <p className="font-semibold text-sm">{title}</p>
+            <p className="text-xs text-base-content/50">{subtitle}</p>
+          </div>
+          <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+            <input
+              type="checkbox"
+              className="checkbox checkbox-xs"
+              checked={allChecked}
+              onChange={e => toggleAll(ids, e.target.checked)}
+            />
+            All
+          </label>
+        </div>
+        {grouped(ingredients).map(({ cat, items: catItems }) => {
+          const Icon = CATEGORY_ICONS[cat]
+          return (
+            <div key={cat} className="mb-3">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-base-content/50 uppercase tracking-wide mb-1">
+                <Icon size={13} />
+                <span>{CATEGORY_LABELS[cat]}</span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                {catItems.map(ing => (
+                  <label key={ing.id} className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-base-200 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="checkbox checkbox-sm checkbox-primary"
+                      checked={selected.has(ing.id!)}
+                      onChange={() => toggle(ing.id!)}
+                    />
+                    <span className="text-sm">{ing.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  // Attach isCore back onto the ingredient objects for the group renderer
+  const coreIngredients = coreItems.map(i => i.ingredient)
+  const optionalIngredients = optionalItems.map(i => i.ingredient)
+
   return (
     <dialog className="modal modal-open">
       <div className="modal-box w-full max-w-md p-0 overflow-hidden">
         <div className="bg-primary/10 px-6 py-4 shrink-0">
           <h3 className="font-bold text-lg text-primary">Shopping list from meal plan</h3>
           <p className="text-sm text-base-content/60 mt-0.5">
-            These ingredients aren't currently in stock. Select the ones you need to buy.
+            Core ingredients are pre-selected. Optional ones are yours to add.
           </p>
         </div>
 
-        <div className="px-6 py-4 max-h-72 overflow-y-auto flex flex-col gap-4">
-          {grouped.map(({ cat, items: catItems }) => {
-            const Icon = CATEGORY_ICONS[cat]
-            return (
-              <div key={cat}>
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-base-content/50 uppercase tracking-wide mb-1.5">
-                  <Icon size={13} />
-                  <span>{CATEGORY_LABELS[cat]}</span>
-                </div>
-                <div className="flex flex-col gap-1">
-                  {catItems.map(ing => (
-                    <label key={ing.id} className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-base-200 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="checkbox checkbox-sm checkbox-primary"
-                        checked={selected.has(ing.id!)}
-                        onChange={() => toggle(ing.id!)}
-                      />
-                      <span className="text-sm">{ing.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )
-          })}
+        <div className="px-6 py-4 max-h-[60vh] overflow-y-auto flex flex-col gap-5">
+          <IngredientGroup
+            title="Core ingredients"
+            subtitle="Required for your planned meals"
+            ingredients={coreIngredients}
+            accent="border-primary/30"
+          />
+          <IngredientGroup
+            title="Optional / substitutes"
+            subtitle="Not pre-selected — add what you want"
+            ingredients={optionalIngredients}
+            accent="border-base-content/20"
+          />
         </div>
 
         <div className="flex items-center justify-between px-6 pb-4 pt-3 border-t border-base-200">
