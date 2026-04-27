@@ -1,6 +1,18 @@
 import type { IngredientCategory, ShelfLifeTier } from '../types'
 import { CATEGORY_LABELS, SHELF_LIFE_LABELS } from '../store/ingredientStore'
-import { MagnifyingGlass, X } from '@phosphor-icons/react'
+import { MagnifyingGlass, X, Orange, Leaf, Oven, Drop, Jar, Snowflake, Cookie, Pepper, Hexagon, type Icon } from '@phosphor-icons/react'
+
+export const CATEGORY_ICONS: Record<IngredientCategory, Icon> = {
+  'fruit':        Orange,
+  'veg':          Leaf,
+  'meat-protein': Oven,
+  'dairy':        Drop,
+  'shelf-staple': Jar,
+  'frozen':       Snowflake,
+  'snacks':       Cookie,
+  'seasoning':    Pepper,
+  'other':        Hexagon,
+}
 
 interface Props {
   value: string
@@ -40,16 +52,20 @@ export function CategoryFilter({ value, onChange }: CategoryFilterProps) {
 
   return (
     <div className="flex flex-wrap gap-2">
-      {options.map(opt => (
-        <button
-          key={opt.value}
-          type="button"
-          onClick={() => onChange(opt.value)}
-          className={`btn btn-sm ${value === opt.value ? 'btn-primary' : 'btn-ghost'}`}
-        >
-          {opt.label}
-        </button>
-      ))}
+      {options.map(opt => {
+        const CatIcon = opt.value !== 'all' ? CATEGORY_ICONS[opt.value as IngredientCategory] : null
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            className={`btn btn-sm gap-1.5 ${value === opt.value ? 'btn-primary' : 'btn-ghost'}`}
+          >
+            {CatIcon && <CatIcon size={14} />}
+            {opt.label}
+          </button>
+        )
+      })}
     </div>
   )
 }

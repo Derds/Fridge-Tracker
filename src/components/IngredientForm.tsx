@@ -48,52 +48,52 @@ export function IngredientForm({ ingredient, onClose }: Props) {
 
   return (
     <dialog className="modal modal-open">
-      <div className="modal-box w-full max-w-md">
-        <h3 className="font-bold text-lg mb-4">{isEdit ? 'Edit Ingredient' : 'New Ingredient'}</h3>
+      <div className="modal-box w-full max-w-md p-6">
+        <h3 className="font-bold text-lg mb-5">{isEdit ? 'Edit Ingredient' : 'New Ingredient'}</h3>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <label className="form-control">
-            <div className="label"><span className="label-text">Name *</span></div>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <div className="form-control">
+            <label className="label pb-1.5"><span className="label-text font-medium">Name *</span></label>
             <input
-              className="input input-bordered"
+              className="input input-bordered w-full"
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="e.g. Chicken Breast"
               autoFocus
             />
-          </label>
+          </div>
 
-          <label className="form-control">
-            <div className="label"><span className="label-text">Category</span></div>
-            <select className="select select-bordered" value={category} onChange={e => setCategory(e.target.value as IngredientCategory)}>
+          <div className="form-control">
+            <label className="label pb-1.5"><span className="label-text font-medium">Category</span></label>
+            <select className="select select-bordered w-full" value={category} onChange={e => setCategory(e.target.value as IngredientCategory)}>
               {CATEGORIES.map(c => (
                 <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
               ))}
             </select>
-          </label>
+          </div>
 
-          <label className="form-control">
-            <div className="label"><span className="label-text">Shelf life</span></div>
-            <select className="select select-bordered" value={shelfLifeTier} onChange={e => setShelfLifeTier(e.target.value as ShelfLifeTier)}>
+          <div className="form-control">
+            <label className="label pb-1.5"><span className="label-text font-medium">Shelf life</span></label>
+            <select className="select select-bordered w-full" value={shelfLifeTier} onChange={e => setShelfLifeTier(e.target.value as ShelfLifeTier)}>
               {SHELF_LIFE_TIERS.map(t => (
                 <option key={t} value={t}>{SHELF_LIFE_LABELS[t]}</option>
               ))}
             </select>
-          </label>
+          </div>
 
-          <label className="form-control">
-            <div className="label"><span className="label-text">Storage notes <span className="text-base-content/50">(optional)</span></span></div>
+          <div className="form-control">
+            <label className="label pb-1.5"><span className="label-text font-medium">Storage notes <span className="text-base-content/50 font-normal">(optional)</span></span></label>
             <textarea
-              className="textarea textarea-bordered"
+              className="textarea textarea-bordered w-full"
               value={storageNotes}
               onChange={e => setStorageNotes(e.target.value)}
               placeholder="e.g. Keep in fridge, away from strong odours"
               rows={2}
             />
-          </label>
+          </div>
 
           <div className="form-control">
-            <div className="label"><span className="label-text">Nutrition tags <span className="text-base-content/50">(optional)</span></span></div>
+            <label className="label pb-1.5"><span className="label-text font-medium">Nutrition tags <span className="text-base-content/50 font-normal">(optional)</span></span></label>
             <div className="flex flex-wrap gap-1">
               {ALL_TAGS.map(tag => {
                 const active = nutritionTags.includes(tag)
@@ -113,7 +113,7 @@ export function IngredientForm({ ingredient, onClose }: Props) {
 
           {error && <p className="text-error text-sm">{error}</p>}
 
-          <div className="modal-action mt-2">
+          <div className="modal-action mt-1">
             <button type="button" className="btn btn-ghost" onClick={onClose} disabled={saving}>Cancel</button>
             <button type="submit" className="btn btn-primary" disabled={saving}>
               {saving ? <span className="loading loading-spinner loading-sm" /> : isEdit ? 'Save changes' : 'Add ingredient'}

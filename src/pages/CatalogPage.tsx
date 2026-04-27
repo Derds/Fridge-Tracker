@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useIngredientStore, CATEGORY_ORDER, CATEGORY_LABELS } from '../store/ingredientStore'
 import type { IngredientCategory } from '../types'
 import type { Ingredient } from '../types'
-import { SearchInput, CategoryFilter, ShelfLifeBadge } from '../components/CatalogFilters'
+import { SearchInput, CategoryFilter, ShelfLifeBadge, CATEGORY_ICONS } from '../components/CatalogFilters'
 import { IngredientForm } from '../components/IngredientForm'
 import { PencilSimple, Trash, Plus } from '@phosphor-icons/react'
 
@@ -70,7 +70,8 @@ export function CatalogPage() {
 
       {!loading && [...grouped.entries()].map(([category, items]) => (
         <div key={category} className="mb-6">
-          <h2 className="text-sm font-semibold text-base-content/60 uppercase tracking-wide mb-2">
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-base-content/60 uppercase tracking-wide mb-2">
+            {(() => { const CatIcon = CATEGORY_ICONS[category]; return <CatIcon size={14} /> })()}
             {CATEGORY_LABELS[category]}
           </h2>
           <div className="flex flex-col gap-1">

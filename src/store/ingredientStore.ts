@@ -48,15 +48,15 @@ export const useIngredientStore = create<IngredientStore>((set) => ({
 }))
 
 export const CATEGORY_LABELS: Record<IngredientCategory, string> = {
-  'fruit': '🍎 Fruit',
-  'veg': '🥦 Veg',
-  'meat-protein': '🥩 Meat & Protein',
-  'dairy': '🧀 Dairy',
-  'shelf-staple': '🥫 Shelf Staple',
-  'frozen': '🧊 Frozen',
-  'snacks': '🍿 Snacks',
-  'seasoning': '🧂 Seasoning',
-  'other': '📦 Other',
+  'fruit':        'Fruit',
+  'veg':          'Veg',
+  'meat-protein': 'Meat & Protein',
+  'dairy':        'Dairy',
+  'shelf-staple': 'Shelf Staple',
+  'frozen':       'Frozen',
+  'snacks':       'Snacks',
+  'seasoning':    'Seasoning',
+  'other':        'Other',
 }
 
 export const SHELF_LIFE_LABELS: Record<ShelfLifeTier, string> = {

@@ -8,6 +8,8 @@ interface ShoppingStore {
 
   loadOrCreateList: () => Promise<void>
   addToPotential: (ingredientId: number, reason?: ShoppingListItem['reason']) => Promise<void>
+  bulkAddToActual: (ingredientIds: number[]) => Promise<void>
+  bulkRemoveFromActual: (ingredientIds: number[]) => Promise<void>
   moveToActual: (ingredientId: number) => Promise<void>
   removeFromActual: (ingredientId: number) => Promise<void>
   removeFromPotential: (ingredientId: number) => Promise<void>
@@ -53,6 +55,36 @@ export const useShoppingStore = create<ShoppingStore>((set, get) => ({
     const inActual = list.actualItems.some(i => i.ingredientId === ingredientId)
     if (already || inActual) return
     const updated = { ...list, potentialItems: [...list.potentialItems, { ingredientId, reason, checked: false }] }
+    await saveList(updated)
+    set({ list: updated })
+  },
+
+  bulkAddToActual: async (ingredientIds) => {
+    const list = get().list
+    if (!list) return
+    const existingIds = new Set([
+      ...list.actualItems.map(i => i.ingredientId),
+      ...list.potentialItems.map(i => i.ingredientId),
+    ])
+    const toAdd = ingredientIds.filter(id => !existingIds.has(id))
+    if (toAdd.length === 0) return
+    const updated = {
+      ...list,
+      potentialItems: list.potentialItems.filter(i => !ingredientIds.includes(i.ingredientId)),
+      actualItems: [
+        ...list.actualItems,
+        ...toAdd.map(id => ({ ingredientId: id, checked: false, reason: 'meal-plan' as const })),
+      ],
+    }
+    await saveList(updated)
+    set({ list: updated })
+  },
+
+  bulkRemoveFromActual: async (ingredientIds) => {
+    const list = get().list
+    if (!list) return
+    const ids = new Set(ingredientIds)
+    const updated = { ...list, actualItems: list.actualItems.filter(i => !ids.has(i.ingredientId)) }
     await saveList(updated)
     set({ list: updated })
   },

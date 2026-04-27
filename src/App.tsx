@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Books, Package, ShoppingCart, ForkKnife, Leaf, type Icon } from '@phosphor-icons/react'
+import { ListBullets, Package, ShoppingCart, ForkKnife, Leaf, type Icon } from '@phosphor-icons/react'
 import { CatalogPage } from './pages/CatalogPage'
 import { InventoryPage } from './pages/InventoryPage'
 import { ShoppingPage } from './pages/ShoppingPage'
@@ -14,10 +14,10 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { id: 'meals',     label: 'Meals',    Icon: ForkKnife   },
-  { id: 'inventory', label: 'Fridge',   Icon: Package     },
-  { id: 'shopping',  label: 'Shopping', Icon: ShoppingCart },
-  { id: 'catalog',   label: 'Catalog',  Icon: Books       },
+  { id: 'meals',     label: 'Meals',     Icon: ForkKnife   },
+  { id: 'inventory', label: 'Inventory', Icon: Package     },
+  { id: 'shopping',  label: 'Shopping',  Icon: ShoppingCart },
+  { id: 'catalog',   label: 'Catalog',   Icon: ListBullets },
 ]
 
 function App() {

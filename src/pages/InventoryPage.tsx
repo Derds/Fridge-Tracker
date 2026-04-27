@@ -34,23 +34,13 @@ export function InventoryPage() {
     <div className="max-w-3xl mx-auto px-4 py-6">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-bold">My Fridge</h1>
+          <h1 className="text-2xl font-bold">My Inventory</h1>
           <p className="text-base-content/60 text-sm mt-1">{items.length} item{items.length !== 1 ? 's' : ''}</p>
         </div>
         <button className="btn btn-primary btn-sm gap-1" onClick={() => setAddOpen(true)}>
           <Plus size={15} weight="bold" /> Add item
         </button>
       </div>
-
-      {/* Expiry warning banner */}
-      {expiredItems.length > 0 && (
-        <div className="alert alert-error mb-4">
-          <Warning size={18} /> {expiredItems.length} item{expiredItems.length !== 1 ? 's have' : ' has'} expired
-          <button className="btn btn-sm btn-outline btn-error ml-auto" onClick={() => setConfirmClearExpired(true)}>
-            Clear expired
-          </button>
-        </div>
-      )}
 
       {/* Sort controls */}
       {items.length > 0 && (
@@ -69,24 +59,8 @@ export function InventoryPage() {
       {!loading && items.length === 0 && (
         <div className="text-center py-16 text-base-content/50">
           <Basket size={48} weight="thin" className="mx-auto mb-3 opacity-40" />
-          <p className="font-medium">Your fridge is empty</p>
+          <p className="font-medium">Your inventory is empty</p>
           <p className="text-sm mt-1">Tap <strong>+ Add item</strong> to get started</p>
-        </div>
-      )}
-
-      {/* Expired items (collapsed by default) */}
-      {expiredItems.length > 0 && (
-        <div className="mb-4">
-          <details>
-            <summary className="text-sm font-semibold text-error cursor-pointer mb-2">
-              Expired ({expiredItems.length})
-            </summary>
-            <div className="flex flex-col gap-1 mt-2">
-              {expiredItems.map(item => (
-                <InventoryCard key={item.id} item={item} onDeplete={depleteItem} onRemove={removeItem} />
-              ))}
-            </div>
-          </details>
         </div>
       )}
 
@@ -96,6 +70,26 @@ export function InventoryPage() {
           <InventoryCard key={item.id} item={item} onDeplete={depleteItem} onRemove={removeItem} />
         ))}
       </div>
+
+      {/* Expired items — collapsed, at the bottom */}
+      {expiredItems.length > 0 && (
+        <div className="mt-6">
+          <details>
+            <summary className="flex items-center gap-2 text-sm font-medium text-warning cursor-pointer select-none">
+              <Warning size={15} weight="fill" />
+              {expiredItems.length} expired item{expiredItems.length !== 1 ? 's' : ''} — tap to review
+            </summary>
+            <div className="flex flex-col gap-1 mt-2">
+              {expiredItems.map(item => (
+                <InventoryCard key={item.id} item={item} onDeplete={depleteItem} onRemove={removeItem} />
+              ))}
+              <button className="btn btn-sm btn-outline btn-warning mt-1 self-start" onClick={() => setConfirmClearExpired(true)}>
+                Clear all expired
+              </button>
+            </div>
+          </details>
+        </div>
+      )}
 
       {addOpen && (
         <AddToInventoryModal onClose={() => setAddOpen(false)} onAdd={addItem} />

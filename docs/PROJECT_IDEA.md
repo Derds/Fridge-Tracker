@@ -35,4 +35,5 @@ Further ideas
 - cycle synced suggestions -> future integration
 - hooks to tidy up dependancies and update security issues
 - connect key details to sync thing?
-- 
+- meal plan costing -> scrape ingredient prices from supermarket websites -> add this to own feature folder
+- substitutions in meal plan eg doesnt matter which rice or greens, just want one of them

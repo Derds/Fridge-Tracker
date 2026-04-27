@@ -22,7 +22,9 @@ import {
   MEAL_SLOTS, MEAL_SLOT_LABELS,
   COOKING_TIME_LABELS, COOKING_TIME_BADGE,
 } from '../types'
-import { ForkKnife, Plus, PencilSimple, Trash, X, ArrowLeft, ArrowRight, CheckCircle } from '@phosphor-icons/react'
+import { ForkKnife, Plus, PencilSimple, Trash, X, ArrowLeft, ArrowRight, ShoppingCart } from '@phosphor-icons/react'
+import { CATEGORY_ICONS } from '../components/CatalogFilters'
+import { CATEGORY_LABELS, CATEGORY_ORDER } from '../store/ingredientStore'
 
 const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -37,13 +39,13 @@ export function MealsPage({ onNavigateToShopping }: Props) {
   const [activeMeal, setActiveMeal] = useState<Meal | null>(null)
   const [addMealForSlot, setAddMealForSlot] = useState<{ date: string; slot: MealSlot } | null>(null)
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
-  const [generatedMsg, setGeneratedMsg] = useState(false)
+  const [reviewItems, setReviewItems] = useState<Ingredient[] | null>(null)
 
   const { meals, loadMeals, addMeal, updateMeal, deleteMeal } = useMealStore()
   const { plan, weekStart, loading: planLoading, loadWeek, addMealToDay, removeMealFromDay } = useWeekPlannerStore()
   const { ingredients, loadIngredients } = useIngredientStore()
   const { items: inventory, loadInventory } = useInventoryStore()
-  const { loadOrCreateList, addToPotential } = useShoppingStore()
+  const { loadOrCreateList, bulkAddToActual } = useShoppingStore()
 
   const weekDays = useMemo(() => getWeekDays(weekStart), [weekStart])
 
@@ -103,13 +105,13 @@ export function MealsPage({ onNavigateToShopping }: Props) {
           if (meal) meal.ingredients.forEach(({ ingredientId }) => needed.add(ingredientId))
         }
       }
-      day.ingredientIds.forEach(id => needed.add(id))
     }
-    for (const ingredientId of needed) {
-      if (!inStock.has(ingredientId)) await addToPotential(ingredientId, 'meal-plan')
+    const missing = [...needed].filter(id => !inStock.has(id)).map(id => ingredientMap.get(id)).filter(Boolean) as Ingredient[]
+    if (missing.length === 0) {
+      alert('You already have everything in stock for this week\'s meals! 🎉')
+      return
     }
-    setGeneratedMsg(true)
-    setTimeout(() => setGeneratedMsg(false), 3000)
+    setReviewItems(missing)
   }
 
   function navigateWeek(offset: number) {
@@ -286,18 +288,12 @@ export function MealsPage({ onNavigateToShopping }: Props) {
 
               {/* Generate shopping list */}
               <div className="mt-6 pt-4 border-t border-base-200 flex items-center justify-end gap-3">
-                {generatedMsg && (
-                  <span className="text-sm text-success flex items-center gap-1">
-                    <CheckCircle size={16} weight="fill" /> Added to shopping suggestions —{' '}
-                    <button className="underline" onClick={onNavigateToShopping}>view list</button>
-                  </span>
-                )}
                 <button
-                  className="btn btn-primary btn-sm"
+                  className="btn btn-primary btn-sm gap-1.5"
                   disabled={plannedCount === 0}
                   onClick={handleGenerateShopping}
                 >
-                  Generate shopping list
+                  <ShoppingCart size={15} weight="bold" /> Generate shopping list
                 </button>
               </div>
             </>
@@ -328,6 +324,19 @@ export function MealsPage({ onNavigateToShopping }: Props) {
             setAddMealForSlot(null)
           }}
           onClose={() => setAddMealForSlot(null)}
+        />
+      )}
+
+      {/* Shopping review modal */}
+      {reviewItems && (
+        <ShoppingReviewModal
+          items={reviewItems}
+          onConfirm={async (selected) => {
+            await bulkAddToActual(selected)
+            setReviewItems(null)
+            onNavigateToShopping()
+          }}
+          onClose={() => setReviewItems(null)}
         />
       )}
     </div>
@@ -526,6 +535,78 @@ function AddMealToDayModal({ meals, slot, plannedMealIds, onAdd, onClose }: {
         )}
         <div className="modal-action mt-3">
           <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>
+        </div>
+      </div>
+      <div className="modal-backdrop" onClick={onClose} />
+    </dialog>
+  )
+}
+
+function ShoppingReviewModal({ items, onConfirm, onClose }: {
+  items: Ingredient[]
+  onConfirm: (selected: number[]) => Promise<void>
+  onClose: () => void
+}) {
+  const [selected, setSelected] = useState<Set<number>>(new Set(items.map(i => i.id!)))
+
+  const grouped = CATEGORY_ORDER.map(cat => ({
+    cat,
+    items: items.filter(i => i.category === cat),
+  })).filter(g => g.items.length > 0)
+
+  function toggle(id: number) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  return (
+    <dialog className="modal modal-open">
+      <div className="modal-box w-full max-w-md p-6">
+        <h3 className="font-bold text-lg mb-1">Shopping list from meal plan</h3>
+        <p className="text-sm text-base-content/60 mb-4">
+          These ingredients aren't currently in stock. Select the ones you need to buy.
+        </p>
+
+        <div className="max-h-72 overflow-y-auto flex flex-col gap-4">
+          {grouped.map(({ cat, items: catItems }) => {
+            const Icon = CATEGORY_ICONS[cat]
+            return (
+              <div key={cat}>
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-base-content/50 uppercase tracking-wide mb-1.5">
+                  <Icon size={13} />
+                  <span>{CATEGORY_LABELS[cat]}</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {catItems.map(ing => (
+                    <label key={ing.id} className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-base-200 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="checkbox checkbox-sm checkbox-primary"
+                        checked={selected.has(ing.id!)}
+                        onChange={() => toggle(ing.id!)}
+                      />
+                      <span className="text-sm">{ing.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="flex items-center justify-between mt-5 pt-4 border-t border-base-200">
+          <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
+          <button
+            className="btn btn-primary btn-sm gap-1.5"
+            disabled={selected.size === 0}
+            onClick={() => onConfirm([...selected])}
+          >
+            <ShoppingCart size={14} weight="bold" />
+            Add {selected.size} to list
+          </button>
         </div>
       </div>
       <div className="modal-backdrop" onClick={onClose} />
