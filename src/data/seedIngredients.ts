@@ -259,3 +259,40 @@ export const SEED_INGREDIENTS: SeedIngredient[] = [
   { name: 'Cinnamon', category: 'seasoning', shelfLifeTier: 'shelf-stable', storageNotes: 'Airtight, away from light' },
   { name: 'Garlic Powder', category: 'seasoning', shelfLifeTier: 'shelf-stable', storageNotes: 'Airtight, away from moisture' },
 ]
+
+// Exported separately for use in DB migrations (not re-seeded on populate)
+export const NEW_INGREDIENTS_V3: SeedIngredient[] = [
+  // --- PASTA TYPES ---
+  { name: 'Spaghetti', category: 'shelf-staple', shelfLifeTier: 'shelf-stable', storageNotes: 'Cool, dry cupboard. Airtight once opened', nutritionTags: ['high-carb'] },
+  { name: 'Penne', category: 'shelf-staple', shelfLifeTier: 'shelf-stable', storageNotes: 'Cool, dry cupboard' },
+  { name: 'Fusilli', category: 'shelf-staple', shelfLifeTier: 'shelf-stable', storageNotes: 'Cool, dry cupboard. Holds sauce well' },
+  { name: 'Rigatoni', category: 'shelf-staple', shelfLifeTier: 'shelf-stable', storageNotes: 'Cool, dry cupboard' },
+  { name: 'Tagliatelle', category: 'shelf-staple', shelfLifeTier: 'shelf-stable', storageNotes: 'Cool, dry cupboard' },
+  { name: 'Linguine', category: 'shelf-staple', shelfLifeTier: 'shelf-stable', storageNotes: 'Cool, dry cupboard. Great with seafood sauces' },
+  { name: 'Lasagne Sheets', category: 'shelf-staple', shelfLifeTier: 'shelf-stable', storageNotes: 'Cool, dry cupboard. No pre-boiling needed for most oven bakes' },
+  { name: 'Orzo', category: 'shelf-staple', shelfLifeTier: 'shelf-stable', storageNotes: 'Cool, dry cupboard. Cooks like rice' },
+  { name: 'Farfalle', category: 'shelf-staple', shelfLifeTier: 'shelf-stable', storageNotes: 'Cool, dry cupboard' },
+  { name: 'Conchiglie (shells)', category: 'shelf-staple', shelfLifeTier: 'shelf-stable', storageNotes: 'Cool, dry cupboard' },
+
+  // --- SEEDS ---
+  { name: 'Pumpkin Seeds', category: 'snacks', shelfLifeTier: 'shelf-stable', storageNotes: 'Airtight container, cool dry place', nutritionTags: ['high-protein', 'high-magnesium', 'high-iron', 'high-omega-3'] },
+  { name: 'Sunflower Seeds', category: 'snacks', shelfLifeTier: 'shelf-stable', storageNotes: 'Airtight container, cool dry place', nutritionTags: ['high-fat', 'high-magnesium'] },
+  { name: 'Mixed Seeds', category: 'snacks', shelfLifeTier: 'shelf-stable', storageNotes: 'Airtight container' },
+
+  // --- BAKING ---
+  { name: 'Caster Sugar', category: 'shelf-staple', shelfLifeTier: 'shelf-stable', storageNotes: 'Airtight container, dry place', nutritionTags: ['high-carb', 'high-sugar'] },
+  { name: 'Granulated Sugar', category: 'shelf-staple', shelfLifeTier: 'shelf-stable', storageNotes: 'Airtight container, dry place', nutritionTags: ['high-carb', 'high-sugar'] },
+  { name: 'Icing Sugar', category: 'shelf-staple', shelfLifeTier: 'shelf-stable', storageNotes: 'Airtight container, dry place. Sieve before use' },
+  { name: 'Brown Sugar', category: 'shelf-staple', shelfLifeTier: 'shelf-stable', storageNotes: 'Airtight container. Add a bread slice to keep moist' },
+  { name: 'Bread Flour (strong)', category: 'shelf-staple', shelfLifeTier: 'shelf-stable', storageNotes: 'Airtight container, cool dry place. Higher protein than plain', nutritionTags: ['high-carb'] },
+  { name: 'Wholemeal Flour', category: 'shelf-staple', shelfLifeTier: 'shelf-stable', storageNotes: 'Airtight container, cool place. Shorter shelf life than white', nutritionTags: ['high-fibre', 'high-carb'] },
+  { name: 'Fast-Action Dried Yeast', category: 'shelf-staple', shelfLifeTier: 'shelf-stable', storageNotes: 'Cool, dry cupboard. Fridge once opened' },
+  { name: 'Baking Powder', category: 'shelf-staple', shelfLifeTier: 'shelf-stable', storageNotes: 'Airtight container, dry place. Check freshness with warm water' },
+  { name: 'Bicarbonate of Soda', category: 'shelf-staple', shelfLifeTier: 'shelf-stable', storageNotes: 'Airtight container, dry place' },
+  { name: 'Vanilla Extract', category: 'seasoning', shelfLifeTier: 'shelf-stable', storageNotes: 'Cool, dark cupboard away from heat' },
+  { name: 'Vanilla Bean Paste', category: 'seasoning', shelfLifeTier: 'shelf-stable', storageNotes: 'Cool, dark cupboard' },
+  { name: 'Golden Syrup', category: 'shelf-staple', shelfLifeTier: 'shelf-stable', storageNotes: 'Room temp, sealed. Very long shelf life' },
+  { name: 'Black Treacle', category: 'shelf-staple', shelfLifeTier: 'shelf-stable', storageNotes: 'Room temp, sealed' },
+  { name: 'Cocoa Powder', category: 'shelf-staple', shelfLifeTier: 'shelf-stable', storageNotes: 'Airtight container, cool dry place' },
+  { name: 'Chocolate Chips', category: 'shelf-staple', shelfLifeTier: 'shelf-stable', storageNotes: 'Cool, dry cupboard. Away from strong smells' },
+]

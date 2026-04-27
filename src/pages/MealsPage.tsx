@@ -21,7 +21,7 @@ import type { Ingredient, Meal, MealPlanDay, MealSlot } from '../types'
 import {
   MEAL_SLOTS, MEAL_SLOT_LABELS,
   COOKING_TIME_LABELS, COOKING_TIME_BADGE,
-  INGREDIENT_ROLE_BADGE,
+  INGREDIENT_ROLE_BADGE_DISPLAY,
 } from '../types'
 import { ForkKnife, Plus, PencilSimple, Trash, X, ArrowLeft, ArrowRight, ShoppingCart } from '@phosphor-icons/react'
 import { CATEGORY_ICONS } from '../components/CatalogFilters'
@@ -373,7 +373,7 @@ function MealCard({ meal, ingredientMap, onEdit, onDelete }: {
             {meal.ingredients.slice(0, 5).map(({ ingredientId, role }) => {
               const ing = ingredientMap.get(ingredientId)
               if (!ing) return null
-              const roleClass = role && role !== 'core' ? INGREDIENT_ROLE_BADGE[role] : 'badge-ghost'
+              const roleClass = role && role !== 'core' ? INGREDIENT_ROLE_BADGE_DISPLAY[role] : 'badge-ghost'
               return (
                 <span key={ingredientId} className={`badge badge-sm ${roleClass}`}>
                   {ing.name}

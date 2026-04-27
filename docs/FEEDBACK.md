@@ -31,6 +31,10 @@ theres
 
 in the catalog page, just rename it ingredients. for the list of ingredients have the name be bolder in colour but have it be in line with the ingredient details (perishavle, high fibre etc) instead of on a new line like currently
 
+
+in a new meal modal, should allow for ingredients to be marked as optional or substitutions as well as core ingredients, optional toppings for example. 
+
+do we have any error handling on the page visuals
+
 ----
 To be addressed:
-

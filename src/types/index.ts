@@ -7,7 +7,14 @@ export const INGREDIENT_ROLE_LABELS: Record<IngredientRole, string> = {
 }
 
 export const INGREDIENT_ROLE_BADGE: Record<IngredientRole, string> = {
-  core:       '',
+  core:       'btn-outline',
+  optional:   'btn-info',
+  substitute: 'btn-warning',
+}
+
+/** Read-only badge colour classes for displaying role on meal cards */
+export const INGREDIENT_ROLE_BADGE_DISPLAY: Record<IngredientRole, string> = {
+  core:       'badge-ghost',
   optional:   'badge-info',
   substitute: 'badge-warning',
 }

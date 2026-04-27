@@ -133,9 +133,10 @@ export function MealForm({ meal, onSave, onClose }: Props) {
                         type="button"
                         title="Click to change role"
                         onClick={() => cycleRole(entry.ingredientId)}
-                        className={`badge badge-sm cursor-pointer select-none transition-colors ${roleBadge || 'badge-ghost opacity-40'}`}
+                        className={`btn btn-xs cursor-pointer select-none transition-colors ${roleBadge ?? 'btn-outline btn-ghost'}`}
+                        title="Click to cycle: core → optional → substitute"
                       >
-                        {INGREDIENT_ROLE_LABELS[entry.role]}
+                        ↻ {INGREDIENT_ROLE_LABELS[entry.role]}
                       </button>
                       <input
                         type="number"
