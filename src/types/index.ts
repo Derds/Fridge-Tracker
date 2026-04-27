@@ -4,6 +4,8 @@ export type IngredientCategory =
   | 'meat-protein'
   | 'dairy'
   | 'shelf-staple'
+  | 'frozen'
+  | 'snacks'
   | 'seasoning'
   | 'other'
 

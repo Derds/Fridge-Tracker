@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie'
 import type { Ingredient, InventoryItem, Meal, MealPlan, ShoppingList } from '../types'
+import { SEED_INGREDIENTS } from '../data/seedIngredients'
 
 export class FridgeDatabase extends Dexie {
   ingredients!: Table<Ingredient>
@@ -18,6 +19,15 @@ export class FridgeDatabase extends Dexie {
       mealPlans: '++id, weekStartDate',
       shoppingLists: '++id, createdAt',
     })
+
+    this.on('populate', () => this.seedIngredients())
+  }
+
+  private async seedIngredients() {
+    const now = new Date()
+    await this.ingredients.bulkAdd(
+      SEED_INGREDIENTS.map(i => ({ ...i, createdAt: now }))
+    )
   }
 }
 
