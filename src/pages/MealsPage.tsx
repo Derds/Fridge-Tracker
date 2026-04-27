@@ -23,7 +23,7 @@ import {
   COOKING_TIME_LABELS, COOKING_TIME_BADGE,
   INGREDIENT_ROLE_BADGE_DISPLAY,
 } from '../types'
-import { ForkKnife, Plus, PencilSimple, Trash, X, ArrowLeft, ArrowRight, ShoppingCart } from '@phosphor-icons/react'
+import { ForkKnife, Plus, PencilSimple, Trash, X, ArrowLeft, ArrowRight, ShoppingCart, ChartBar } from '@phosphor-icons/react'
 import { CATEGORY_ICONS } from '../components/CatalogFilters'
 import { CATEGORY_LABELS, CATEGORY_ORDER } from '../store/ingredientStore'
 
@@ -41,6 +41,7 @@ export function MealsPage({ onNavigateToShopping }: Props) {
   const [addMealForSlot, setAddMealForSlot] = useState<{ date: string; slot: MealSlot } | null>(null)
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [reviewItems, setReviewItems] = useState<{ ingredient: Ingredient; isCore: boolean }[] | null>(null)
+  const [showNutrition, setShowNutrition] = useState(false)
 
   const { meals, loadMeals, addMeal, updateMeal, deleteMeal } = useMealStore()
   const { plan, weekStart, loading: planLoading, loadWeek, addMealToDay, removeMealFromDay } = useWeekPlannerStore()
@@ -73,6 +74,34 @@ export function MealsPage({ onNavigateToShopping }: Props) {
     () => plan?.days.reduce((n, d) => n + MEAL_SLOTS.reduce((s, slot) => s + d.slots[slot].length, 0), 0) ?? 0,
     [plan]
   )
+
+  // Days that have at least one meal planned — used as denominator for nutrition chart
+  const plannedDays = useMemo(
+    () => plan?.days.filter(d => MEAL_SLOTS.some(s => d.slots[s].length > 0)).length ?? 0,
+    [plan]
+  )
+
+  // Nutrition tag → number of distinct days that have at least one ingredient with that tag
+  const weekNutrition = useMemo(() => {
+    if (!plan) return new Map<string, number>()
+    const tagDays = new Map<string, Set<string>>()
+    for (const day of plan.days) {
+      for (const slot of MEAL_SLOTS) {
+        for (const mealId of day.slots[slot]) {
+          const meal = mealMap.get(mealId)
+          if (!meal) continue
+          for (const { ingredientId } of meal.ingredients) {
+            const ing = ingredientMap.get(ingredientId)
+            for (const tag of (ing?.nutritionTags ?? [])) {
+              if (!tagDays.has(tag)) tagDays.set(tag, new Set())
+              tagDays.get(tag)!.add(day.date)
+            }
+          }
+        }
+      }
+    }
+    return new Map([...tagDays].map(([tag, days]) => [tag, days.size]))
+  }, [plan, mealMap, ingredientMap])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -301,8 +330,17 @@ export function MealsPage({ onNavigateToShopping }: Props) {
                 })()}
               </div>
 
-              {/* Generate shopping list */}
-              <div className="mt-6 pt-4 border-t border-base-200 flex items-center justify-end gap-3">
+              {/* Generate shopping list + nutrition toggle */}
+              <div className="mt-6 pt-4 border-t border-base-200 flex items-center justify-between gap-3">
+                <button
+                  className="btn btn-ghost btn-xs gap-1.5 text-base-content/50"
+                  onClick={() => setShowNutrition(v => !v)}
+                  disabled={plannedDays === 0}
+                  title="Show nutrition balance for this week"
+                >
+                  <ChartBar size={14} />
+                  {showNutrition ? 'Hide nutrition' : 'Nutrition summary'}
+                </button>
                 <button
                   className="btn btn-primary btn-sm gap-1.5"
                   disabled={plannedCount === 0}
@@ -311,6 +349,11 @@ export function MealsPage({ onNavigateToShopping }: Props) {
                   <ShoppingCart size={15} weight="bold" /> Generate shopping list
                 </button>
               </div>
+
+              {/* Nutrition balance chart — hidden by default */}
+              {showNutrition && plannedDays > 0 && (
+                <NutritionSummaryPanel tagCoverage={weekNutrition} plannedDays={plannedDays} />
+              )}
             </>
           )}
         </div>
@@ -694,5 +737,106 @@ function ShoppingReviewModal({ items, onConfirm, onClose }: {
       </div>
       <div className="modal-backdrop" onClick={onClose} />
     </dialog>
+  )
+}
+
+// ── Nutrition summary ─────────────────────────────────────────────────────────
+
+const NUTRITION_GROUPS = [
+  {
+    label: 'Macros & fats',
+    barClass: 'bg-success',
+    dims: [
+      { tag: 'high-protein',  label: 'Protein'   },
+      { tag: 'high-fibre',    label: 'Fibre'     },
+      { tag: 'high-carb',     label: 'Carbs'     },
+      { tag: 'high-fat',      label: 'Healthy fats' },
+      { tag: 'high-omega-3',  label: 'Omega‑3'   },
+    ],
+  },
+  {
+    label: 'Minerals',
+    barClass: 'bg-info',
+    dims: [
+      { tag: 'high-iron',      label: 'Iron'      },
+      { tag: 'high-calcium',   label: 'Calcium'   },
+      { tag: 'high-magnesium', label: 'Magnesium' },
+    ],
+  },
+  {
+    label: 'Vitamins',
+    barClass: 'bg-secondary',
+    dims: [
+      { tag: 'high-vitamin-c', label: 'Vitamin C' },
+      { tag: 'high-vitamin-d', label: 'Vitamin D' },
+    ],
+  },
+]
+
+function NutritionBar({ label, days, total, barClass }: {
+  label: string
+  days: number
+  total: number
+  barClass: string
+}) {
+  const pct = total > 0 ? Math.round((days / total) * 100) : 0
+  // De-saturate to warning/muted when coverage is low
+  const fill = pct >= 57 ? barClass : pct >= 28 ? 'bg-warning' : 'bg-base-300'
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-base-content/60 w-24 shrink-0">{label}</span>
+      <div className="flex-1 h-1.5 bg-base-300 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${fill}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className="text-[10px] text-base-content/40 w-8 text-right tabular-nums">{days}/{total}d</span>
+    </div>
+  )
+}
+
+function NutritionSummaryPanel({ tagCoverage, plannedDays }: {
+  tagCoverage: Map<string, number>
+  plannedDays: number
+}) {
+  const covered = NUTRITION_GROUPS.flatMap(g => g.dims).filter(d => (tagCoverage.get(d.tag) ?? 0) > 0).length
+  const total   = NUTRITION_GROUPS.flatMap(g => g.dims).length
+
+  return (
+    <div className="mt-4 bg-base-200 rounded-xl p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold">Nutrition balance</h3>
+        <span className="text-xs text-base-content/50">
+          {covered}/{total} nutrients tracked · {plannedDays} day{plannedDays !== 1 ? 's' : ''} planned
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-4">
+        {NUTRITION_GROUPS.map(group => (
+          <div key={group.label}>
+            <p className="text-[10px] font-semibold text-base-content/40 uppercase tracking-wide mb-1.5">
+              {group.label}
+            </p>
+            <div className="flex flex-col gap-1.5">
+              {group.dims.map(dim => (
+                <NutritionBar
+                  key={dim.tag}
+                  label={dim.label}
+                  days={tagCoverage.get(dim.tag) ?? 0}
+                  total={plannedDays}
+                  barClass={group.barClass}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <p className="text-[10px] text-base-content/30 mt-3 leading-relaxed">
+        Coverage is based on nutrition tags on your ingredients. Add tags in the Ingredients page to improve accuracy.
+      </p>
+    </div>
   )
 }

@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Pacifico&family=Nunito:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Source+Sans+3:wght@400;500;600&display=swap');
+
 @import "tailwindcss";
 @import "daisyui/daisyui.css";
 
@@ -83,3 +85,26 @@
   --color-error-content:     #ffffff;
 }
 
+/* ── Font pairing variables ────────────────────────────────────────────── */
+:root {
+  --font-heading: system-ui, -apple-system, sans-serif;
+  --font-body:    system-ui, -apple-system, sans-serif;
+}
+
+[data-font="kitchen"] {
+  --font-heading: 'Pacifico', cursive;
+  --font-body:    'Nunito', sans-serif;
+}
+
+[data-font="cookbook"] {
+  --font-heading: 'Playfair Display', serif;
+  --font-body:    'Source Sans 3', sans-serif;
+}
+
+body {
+  font-family: var(--font-body);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+}
