@@ -62,15 +62,15 @@ export const useShoppingStore = create<ShoppingStore>((set, get) => ({
   bulkAddToActual: async (ingredientIds) => {
     const list = get().list
     if (!list) return
-    const existingIds = new Set([
-      ...list.actualItems.map(i => i.ingredientId),
-      ...list.potentialItems.map(i => i.ingredientId),
-    ])
-    const toAdd = ingredientIds.filter(id => !existingIds.has(id))
+    // Only skip items already confirmed in the actual list — items sitting in
+    // potentialItems (e.g. put back there by removeFromActual) should be moved across
+    const alreadyActual = new Set(list.actualItems.map(i => i.ingredientId))
+    const toAdd = ingredientIds.filter(id => !alreadyActual.has(id))
     if (toAdd.length === 0) return
+    const toAddSet = new Set(toAdd)
     const updated = {
       ...list,
-      potentialItems: list.potentialItems.filter(i => !ingredientIds.includes(i.ingredientId)),
+      potentialItems: list.potentialItems.filter(i => !toAddSet.has(i.ingredientId)),
       actualItems: [
         ...list.actualItems,
         ...toAdd.map(id => ({ ingredientId: id, checked: false, reason: 'meal-plan' as const })),
