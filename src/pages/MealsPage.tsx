@@ -75,13 +75,14 @@ export function MealsPage({ onNavigateToShopping }: Props) {
   const [editMeal, setEditMeal] = useState<Meal | undefined>()
   const [activeMeal, setActiveMeal] = useState<Meal | null>(null)
   const [addMealForSlot, setAddMealForSlot] = useState<{ date: string; slot: MealSlot } | null>(null)
+  const [addSnackIngForDate, setAddSnackIngForDate] = useState<string | null>(null)
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [reviewItems, setReviewItems] = useState<{ ingredient: Ingredient; isCore: boolean }[] | null>(null)
   const [showNutrition, setShowNutrition] = useState(false)
   const [importMsg, setImportMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
   const { meals, loadMeals, addMeal, updateMeal, deleteMeal } = useMealStore()
-  const { plan, weekStart, loading: planLoading, loadWeek, addMealToDay, removeMealFromDay } = useWeekPlannerStore()
+  const { plan, weekStart, loading: planLoading, loadWeek, addMealToDay, removeMealFromDay, toggleEatingOut, addSnackIngredient, removeSnackIngredient } = useWeekPlannerStore()
   const { ingredients, loadIngredients } = useIngredientStore()
   const { items: inventory, loadInventory } = useInventoryStore()
   const { loadOrCreateList, bulkAddToActual } = useShoppingStore()
@@ -326,8 +327,11 @@ export function MealsPage({ onNavigateToShopping }: Props) {
                           day={day}
                           dayName={DAY_NAMES[i]}
                           mealMap={mealMap}
+                          ingredientMap={ingredientMap}
                           onRemoveMeal={(slot, mealId) => removeMealFromDay(date, slot, mealId)}
-                          onClickAdd={(slot) => setAddMealForSlot({ date, slot })}
+                          onClickAdd={(slot) => slot === 'snack' ? setAddSnackIngForDate(date) : setAddMealForSlot({ date, slot })}
+                          onToggleEatingOut={() => toggleEatingOut(date)}
+                          onRemoveSnackIngredient={(ingId) => removeSnackIngredient(date, ingId)}
                         />
                       )
                     })}
@@ -367,13 +371,31 @@ export function MealsPage({ onNavigateToShopping }: Props) {
                   const day = plan?.days.find(d => d.date === selectedDay) ?? { date: selectedDay, slots: { breakfast: [], lunch: [], dinner: [], snack: [] }, ingredientIds: [] }
                   return (
                     <div>
-                      <p className="font-semibold mb-4 text-sm">{formatDayLabel(selectedDay, 'full')}</p>
+                      <div className="flex items-center justify-between mb-4">
+                        <p className="font-semibold text-sm">{formatDayLabel(selectedDay, 'full')}</p>
+                        <label className="flex items-center gap-1.5 cursor-pointer select-none text-xs text-base-content/60">
+                          <input
+                            type="checkbox"
+                            className="checkbox checkbox-xs"
+                            checked={day.eatingOut ?? false}
+                            onChange={() => toggleEatingOut(selectedDay)}
+                          />
+                          Eating out
+                        </label>
+                      </div>
+                      {day.eatingOut ? (
+                        <div className="py-8 text-center text-base-content/40">
+                          <p className="text-2xl mb-1">🍽️</p>
+                          <p className="text-sm">Eating out today</p>
+                        </div>
+                      ) : (
+                      <>
                       {MEAL_SLOTS.map(slot => (
                         <div key={slot} className="mb-4">
                           <p className="text-xs font-semibold text-base-content/50 uppercase tracking-wide mb-1.5">
                             {MEAL_SLOT_LABELS[slot]}
                           </p>
-                          {day.slots[slot].length === 0 ? (
+                          {day.slots[slot].length === 0 && (slot !== 'snack' || !(day.snackIngredientIds?.length)) ? (
                             <p className="text-xs text-base-content/30 italic mb-1.5">Nothing planned</p>
                           ) : (
                             <div className="flex flex-col gap-1 mb-1.5">
@@ -386,16 +408,36 @@ export function MealsPage({ onNavigateToShopping }: Props) {
                                   ><X size={12} /></button>
                                 </div>
                               ))}
+                              {slot === 'snack' && (day.snackIngredientIds ?? []).map(ingId => (
+                                <div key={ingId} className="flex items-center gap-2 bg-base-200/60 rounded-lg px-3 py-1.5">
+                                  <span className="flex-1 text-sm">{ingredientMap.get(ingId)?.name ?? '—'}</span>
+                                  <button
+                                    className="btn btn-ghost btn-xs opacity-40 hover:opacity-100"
+                                    onClick={() => removeSnackIngredient(selectedDay, ingId)}
+                                  ><X size={12} /></button>
+                                </div>
+                              ))}
                             </div>
                           )}
-                          <button
-                            className="btn btn-outline btn-xs w-full gap-1"
-                            onClick={() => setAddMealForSlot({ date: selectedDay, slot })}
-                          >
-                            <Plus size={12} /> Add to {MEAL_SLOT_LABELS[slot].toLowerCase()}
-                          </button>
+                          {slot === 'snack' ? (
+                            <button
+                              className="btn btn-outline btn-xs w-full gap-1"
+                              onClick={() => setAddSnackIngForDate(selectedDay)}
+                            >
+                              <Plus size={12} /> Add snack
+                            </button>
+                          ) : (
+                            <button
+                              className="btn btn-outline btn-xs w-full gap-1"
+                              onClick={() => setAddMealForSlot({ date: selectedDay, slot })}
+                            >
+                              <Plus size={12} /> Add to {MEAL_SLOT_LABELS[slot].toLowerCase()}
+                            </button>
+                          )}
                         </div>
                       ))}
+                      </>
+                      )}
                     </div>
                   )
                 })()}
@@ -456,6 +498,25 @@ export function MealsPage({ onNavigateToShopping }: Props) {
         />
       )}
 
+      {/* Snack ingredient picker modal */}
+      {addSnackIngForDate && (
+        <SnackIngredientModal
+          ingredients={ingredients}
+          existingMealIds={plan?.days.find(d => d.date === addSnackIngForDate)?.snackIngredientIds ?? []}
+          meals={meals}
+          plannedMealIds={plan?.days.find(d => d.date === addSnackIngForDate)?.slots.snack ?? []}
+          onAddIngredient={async (ingId) => {
+            await addSnackIngredient(addSnackIngForDate, ingId)
+            setAddSnackIngForDate(null)
+          }}
+          onAddMeal={async (mealId) => {
+            await addMealToDay(addSnackIngForDate, 'snack', mealId)
+            setAddSnackIngForDate(null)
+          }}
+          onClose={() => setAddSnackIngForDate(null)}
+        />
+      )}
+
       {/* Shopping review modal */}
       {reviewItems && (
         <ShoppingReviewModal
@@ -484,7 +545,10 @@ function MealCard({ meal, ingredientMap, onEdit, onDelete }: {
     <div className="card bg-base-200 shadow-sm hover:shadow-md transition-shadow">
       <div className="card-body p-4">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="card-title text-base leading-snug">{meal.name}</h3>
+          <div className="flex items-center gap-2 min-w-0">
+            <h3 className="card-title text-base leading-snug">{meal.name}</h3>
+            {meal.isVegetarian && <span className="text-sm" title="Vegetarian">🌿</span>}
+          </div>
           <div className="flex gap-1 flex-shrink-0">
             <button className="btn btn-ghost btn-xs" onClick={onEdit} aria-label="Edit"><PencilSimple size={15} /></button>
             <button className="btn btn-ghost btn-xs opacity-40 hover:opacity-100" onClick={onDelete} aria-label="Delete"><Trash size={15} /></button>
@@ -545,13 +609,16 @@ function DraggableMeal({ meal }: { meal: Meal }) {
   )
 }
 
-function DroppableSlot({ date, slot, mealIds, mealMap, onRemoveMeal, onClickAdd }: {
+function DroppableSlot({ date, slot, mealIds, snackIngredientIds, mealMap, ingredientMap, onRemoveMeal, onClickAdd, onRemoveSnackIngredient }: {
   date: string
   slot: MealSlot
   mealIds: number[]
+  snackIngredientIds?: number[]
   mealMap: Map<number, Meal>
+  ingredientMap: Map<number, Ingredient>
   onRemoveMeal: (mealId: number) => void
   onClickAdd: () => void
+  onRemoveSnackIngredient?: (ingId: number) => void
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `slot-${date}-${slot}` })
   const abbrev: Record<MealSlot, string> = { breakfast: 'Bkfst', lunch: 'Lunch', dinner: 'Dinner', snack: 'Snack' }
@@ -573,6 +640,16 @@ function DroppableSlot({ date, slot, mealIds, mealMap, onRemoveMeal, onClickAdd 
             ><X size={10} /></button>
           </div>
         ))}
+        {slot === 'snack' && (snackIngredientIds ?? []).map(ingId => (
+          <div key={ingId} className="bg-success/10 text-success rounded px-1.5 py-0.5 text-xs flex items-center gap-1 group">
+            <span className="flex-1 truncate">{ingredientMap.get(ingId)?.name ?? '—'}</span>
+            <button
+              className="opacity-0 group-hover:opacity-100 text-base-content/50 hover:text-error transition-opacity"
+              onClick={() => onRemoveSnackIngredient?.(ingId)}
+              aria-label="Remove"
+            ><X size={10} /></button>
+          </div>
+        ))}
       </div>
       <button
         className="text-base-content/20 hover:text-base-content/50 transition-colors flex items-center justify-center mt-0.5"
@@ -585,35 +662,58 @@ function DroppableSlot({ date, slot, mealIds, mealMap, onRemoveMeal, onClickAdd 
   )
 }
 
-function DroppableDay({ date, day, dayName, mealMap, onRemoveMeal, onClickAdd }: {
+function DroppableDay({ date, day, dayName, mealMap, ingredientMap, onRemoveMeal, onClickAdd, onToggleEatingOut, onRemoveSnackIngredient }: {
   date: string
   day: MealPlanDay
   dayName: string
   mealMap: Map<number, Meal>
+  ingredientMap: Map<number, Ingredient>
   onRemoveMeal: (slot: MealSlot, mealId: number) => void
   onClickAdd: (slot: MealSlot) => void
+  onToggleEatingOut: () => void
+  onRemoveSnackIngredient: (ingId: number) => void
 }) {
   const dateNum = date.split('-')[2]
 
   return (
-    <div className="flex flex-col rounded-lg border border-base-300 bg-base-50 overflow-hidden">
+    <div className={`flex flex-col rounded-lg border border-base-300 bg-base-50 overflow-hidden transition-opacity ${day.eatingOut ? 'opacity-60' : ''}`}>
       <div className="text-center py-1.5 bg-base-200 border-b border-base-300">
         <p className="text-xs font-semibold text-base-content/50">{dayName}</p>
         <p className="text-sm font-bold">{dateNum}</p>
       </div>
-      <div className="flex flex-col flex-1">
-        {MEAL_SLOTS.map(slot => (
-          <DroppableSlot
-            key={slot}
-            date={date}
-            slot={slot}
-            mealIds={day.slots[slot]}
-            mealMap={mealMap}
-            onRemoveMeal={(mealId) => onRemoveMeal(slot, mealId)}
-            onClickAdd={() => onClickAdd(slot)}
-          />
-        ))}
-      </div>
+      {day.eatingOut ? (
+        <div
+          className="flex-1 flex flex-col items-center justify-center py-3 cursor-pointer group"
+          onClick={onToggleEatingOut}
+          title="Click to unmark eating out"
+        >
+          <span className="text-lg">🍽️</span>
+          <span className="text-[9px] text-base-content/40 mt-0.5">Eating out</span>
+        </div>
+      ) : (
+        <div className="flex flex-col flex-1">
+          {MEAL_SLOTS.map(slot => (
+            <DroppableSlot
+              key={slot}
+              date={date}
+              slot={slot}
+              mealIds={day.slots[slot]}
+              snackIngredientIds={slot === 'snack' ? day.snackIngredientIds : undefined}
+              mealMap={mealMap}
+              ingredientMap={ingredientMap}
+              onRemoveMeal={(mealId) => onRemoveMeal(slot, mealId)}
+              onClickAdd={() => onClickAdd(slot)}
+              onRemoveSnackIngredient={onRemoveSnackIngredient}
+            />
+          ))}
+        </div>
+      )}
+      <button
+        className={`text-[8px] py-0.5 text-base-content/30 hover:text-base-content/60 transition-colors border-t border-base-200 ${day.eatingOut ? 'text-warning/70' : ''}`}
+        onClick={onToggleEatingOut}
+      >
+        {day.eatingOut ? '↺ undo' : '🍽 out'}
+      </button>
     </div>
   )
 }
@@ -626,17 +726,31 @@ function AddMealToDayModal({ meals, slot, plannedMealIds, onAdd, onClose }: {
   onClose: () => void
 }) {
   const [search, setSearch] = useState('')
+  const [timeFilter, setTimeFilter] = useState<string>('all')
+  const [veggieOnly, setVeggieOnly] = useState(false)
   const planned = new Set(plannedMealIds)
-  const filtered = meals.filter(m =>
-    !planned.has(m.id!) && (!search || m.name.toLowerCase().includes(search.toLowerCase()))
-  )
+  const filtered = meals.filter(m => {
+    if (planned.has(m.id!)) return false
+    if (search && !m.name.toLowerCase().includes(search.toLowerCase())) return false
+    if (timeFilter !== 'all' && m.cookingTime !== timeFilter) return false
+    if (veggieOnly && !m.isVegetarian) return false
+    return true
+  })
+
+  const timeOptions = [
+    { value: 'all', label: 'Any time' },
+    { value: 'very-quick', label: '< 15 min' },
+    { value: 'quick', label: '< 30 min' },
+    { value: 'medium', label: '30–60 min' },
+    { value: 'decadent', label: '1 hr+' },
+  ]
 
   return (
     <dialog className="modal modal-open">
       <div className="modal-box w-full max-w-sm">
         <h3 className="font-bold text-lg mb-0.5">Add meal</h3>
         <p className="text-sm text-base-content/50 mb-3">{MEAL_SLOT_LABELS[slot]}</p>
-        <label className="input input-bordered input-sm flex items-center gap-2 mb-3">
+        <label className="input input-bordered input-sm flex items-center gap-2 mb-2">
           <input
             className="grow"
             placeholder="Search meals…"
@@ -645,24 +759,128 @@ function AddMealToDayModal({ meals, slot, plannedMealIds, onAdd, onClose }: {
             autoFocus
           />
         </label>
+        <div className="flex flex-wrap gap-1 mb-2">
+          {timeOptions.map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              className={`badge cursor-pointer select-none ${timeFilter === opt.value ? 'badge-primary' : 'badge-ghost'}`}
+              onClick={() => setTimeFilter(opt.value)}
+            >
+              {opt.label}
+            </button>
+          ))}
+          <label className={`badge cursor-pointer select-none ml-auto ${veggieOnly ? 'badge-success' : 'badge-ghost'}`}>
+            <input type="checkbox" className="hidden" checked={veggieOnly} onChange={e => setVeggieOnly(e.target.checked)} />
+            🌿 Veggie
+          </label>
+        </div>
         {filtered.length === 0 ? (
           <p className="text-sm text-base-content/40 py-4 text-center">
-            {meals.length === 0 ? 'No meals saved — create some in the Meals tab first' : 'All meals already added for this slot'}
+            {meals.length === 0 ? 'No meals saved — create some in the Meals tab first' : 'No meals match these filters'}
           </p>
         ) : (
-          <ul className="flex flex-col gap-1 max-h-64 overflow-y-auto">
+          <ul className="flex flex-col gap-1 max-h-60 overflow-y-auto">
             {filtered.map(meal => (
               <li key={meal.id}>
                 <button
-                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-base-200 text-sm flex items-center justify-between"
+                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-base-200 text-sm flex items-center justify-between gap-2"
                   onClick={() => onAdd(meal.id!)}
                 >
-                  <span>{meal.name}</span>
+                  <span className="flex items-center gap-1 min-w-0">
+                    {meal.isVegetarian && <span>🌿</span>}
+                    <span className="truncate">{meal.name}</span>
+                  </span>
                   {meal.cookingTime && (
-                    <span className={`badge badge-xs ${COOKING_TIME_BADGE[meal.cookingTime]}`}>
+                    <span className={`badge badge-xs flex-shrink-0 ${COOKING_TIME_BADGE[meal.cookingTime]}`}>
                       {COOKING_TIME_LABELS[meal.cookingTime]}
                     </span>
                   )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="modal-action mt-3">
+          <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>
+        </div>
+      </div>
+      <div className="modal-backdrop" onClick={onClose} />
+    </dialog>
+  )
+}
+
+function SnackIngredientModal({ ingredients, existingMealIds, meals, plannedMealIds, onAddIngredient, onAddMeal, onClose }: {
+  ingredients: Ingredient[]
+  existingMealIds: number[]
+  meals: Meal[]
+  plannedMealIds: number[]
+  onAddIngredient: (id: number) => Promise<void>
+  onAddMeal: (id: number) => Promise<void>
+  onClose: () => void
+}) {
+  const [tab, setTab] = useState<'ingredient' | 'meal'>('ingredient')
+  const [search, setSearch] = useState('')
+  const existingIngIds = new Set(existingMealIds)
+  const plannedSet = new Set(plannedMealIds)
+
+  const filteredIngredients = ingredients.filter(i =>
+    !existingIngIds.has(i.id!) &&
+    (!search || i.name.toLowerCase().includes(search.toLowerCase()))
+  )
+  const filteredMeals = meals.filter(m =>
+    !plannedSet.has(m.id!) &&
+    (!search || m.name.toLowerCase().includes(search.toLowerCase()))
+  )
+
+  return (
+    <dialog className="modal modal-open">
+      <div className="modal-box w-full max-w-sm">
+        <h3 className="font-bold text-lg mb-3">Add to Snack</h3>
+        <div role="tablist" className="tabs tabs-bordered mb-3">
+          <button role="tab" className={`tab tab-sm ${tab === 'ingredient' ? 'tab-active' : ''}`} onClick={() => setTab('ingredient')}>
+            Ingredient
+          </button>
+          <button role="tab" className={`tab tab-sm ${tab === 'meal' ? 'tab-active' : ''}`} onClick={() => setTab('meal')}>
+            Meal
+          </button>
+        </div>
+        <label className="input input-bordered input-sm flex items-center gap-2 mb-2">
+          <input
+            className="grow"
+            placeholder={tab === 'ingredient' ? 'Search ingredients…' : 'Search meals…'}
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            autoFocus
+          />
+        </label>
+        {tab === 'ingredient' ? (
+          <ul className="flex flex-col gap-1 max-h-64 overflow-y-auto">
+            {filteredIngredients.length === 0 ? (
+              <p className="text-sm text-base-content/40 py-4 text-center">No ingredients found</p>
+            ) : filteredIngredients.map(i => (
+              <li key={i.id}>
+                <button
+                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-base-200 text-sm"
+                  onClick={() => onAddIngredient(i.id!)}
+                >
+                  {i.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <ul className="flex flex-col gap-1 max-h-64 overflow-y-auto">
+            {filteredMeals.length === 0 ? (
+              <p className="text-sm text-base-content/40 py-4 text-center">No meals found</p>
+            ) : filteredMeals.map(m => (
+              <li key={m.id}>
+                <button
+                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-base-200 text-sm flex items-center justify-between gap-2"
+                  onClick={() => onAddMeal(m.id!)}
+                >
+                  <span className="flex items-center gap-1">{m.isVegetarian && <span>🌿</span>}{m.name}</span>
+                  {m.cookingTime && <span className={`badge badge-xs ${COOKING_TIME_BADGE[m.cookingTime]}`}>{COOKING_TIME_LABELS[m.cookingTime]}</span>}
                 </button>
               </li>
             ))}

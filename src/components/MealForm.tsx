@@ -21,6 +21,7 @@ export function MealForm({ meal, onSave, onClose }: Props) {
   const [name, setName] = useState(meal?.name ?? '')
   const [notes, setNotes] = useState(meal?.notes ?? '')
   const [cookingTime, setCookingTime] = useState<CookingTime>(meal?.cookingTime ?? 'medium')
+  const [isVegetarian, setIsVegetarian] = useState(meal?.isVegetarian ?? false)
   const [search, setSearch] = useState('')
   const [entries, setEntries] = useState<IngredientEntry[]>(
     meal?.ingredients.map(e => ({ ...e, role: e.role ?? 'core' })) ?? []
@@ -65,7 +66,7 @@ export function MealForm({ meal, onSave, onClose }: Props) {
     if (!name.trim()) { setError('Name is required'); return }
     setSaving(true)
     try {
-      await onSave({ name: name.trim(), notes: notes.trim() || undefined, cookingTime, ingredients: entries })
+      await onSave({ name: name.trim(), notes: notes.trim() || undefined, cookingTime, isVegetarian, ingredients: entries })
       onClose()
     } catch {
       setError('Something went wrong — please try again')
@@ -105,6 +106,18 @@ export function MealForm({ meal, onSave, onClose }: Props) {
               <option value="medium">Medium — {COOKING_TIME_LABELS['medium']}</option>
               <option value="decadent">Slow / Decadent — {COOKING_TIME_LABELS['decadent']}</option>
             </select>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                className="checkbox checkbox-sm checkbox-success"
+                checked={isVegetarian}
+                onChange={e => setIsVegetarian(e.target.checked)}
+              />
+              <span className="label-text font-medium">🌿 Vegetarian</span>
+            </label>
           </div>
 
           <div className="form-control">

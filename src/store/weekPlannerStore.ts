@@ -61,6 +61,9 @@ interface WeekPlannerStore {
   loadWeek: (weekStart?: string) => Promise<void>
   addMealToDay: (date: string, slot: MealSlot, mealId: number) => Promise<void>
   removeMealFromDay: (date: string, slot: MealSlot, mealId: number) => Promise<void>
+  toggleEatingOut: (date: string) => Promise<void>
+  addSnackIngredient: (date: string, ingredientId: number) => Promise<void>
+  removeSnackIngredient: (date: string, ingredientId: number) => Promise<void>
 }
 
 export const useWeekPlannerStore = create<WeekPlannerStore>((set, get) => ({
@@ -99,6 +102,41 @@ export const useWeekPlannerStore = create<WeekPlannerStore>((set, get) => ({
     const days = plan.days.map(d =>
       d.date === date
         ? { ...d, slots: { ...d.slots, [slot]: d.slots[slot].filter(id => id !== mealId) } }
+        : d
+    )
+    await savePlanDays(plan, days)
+    set({ plan: { ...plan, days } })
+  },
+
+  toggleEatingOut: async (date) => {
+    const { plan } = get()
+    if (!plan) return
+    const days = plan.days.map(d =>
+      d.date === date ? { ...d, eatingOut: !d.eatingOut } : d
+    )
+    await savePlanDays(plan, days)
+    set({ plan: { ...plan, days } })
+  },
+
+  addSnackIngredient: async (date, ingredientId) => {
+    const { plan } = get()
+    if (!plan) return
+    const days = plan.days.map(d => {
+      if (d.date !== date) return d
+      const existing = d.snackIngredientIds ?? []
+      if (existing.includes(ingredientId)) return d
+      return { ...d, snackIngredientIds: [...existing, ingredientId] }
+    })
+    await savePlanDays(plan, days)
+    set({ plan: { ...plan, days } })
+  },
+
+  removeSnackIngredient: async (date, ingredientId) => {
+    const { plan } = get()
+    if (!plan) return
+    const days = plan.days.map(d =>
+      d.date === date
+        ? { ...d, snackIngredientIds: (d.snackIngredientIds ?? []).filter(id => id !== ingredientId) }
         : d
     )
     await savePlanDays(plan, days)

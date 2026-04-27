@@ -107,6 +107,7 @@ export interface Meal {
   ingredients: Array<{ ingredientId: number; servings: number; role?: IngredientRole }>
   notes?: string
   cookingTime?: CookingTime
+  isVegetarian?: boolean
   createdAt: Date
 }
 
@@ -114,6 +115,8 @@ export interface MealPlanDay {
   date: string  // ISO date string YYYY-MM-DD
   slots: Record<MealSlot, number[]>
   ingredientIds: number[]
+  snackIngredientIds?: number[]   // single ingredients added to snack slot
+  eatingOut?: boolean             // mark day as eating out
   /** @deprecated kept for migration of old data */
   mealIds?: number[]
 }

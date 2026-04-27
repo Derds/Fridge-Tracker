@@ -3,7 +3,18 @@ import type { Ingredient, IngredientCategory, ShelfLifeTier, NutritionTag } from
 import { CATEGORY_LABELS, SHELF_LIFE_LABELS, useIngredientStore } from '../store/ingredientStore'
 
 const CATEGORIES: IngredientCategory[] = ['fruit', 'veg', 'meat-protein', 'dairy', 'shelf-staple', 'frozen', 'snacks', 'seasoning', 'other']
-const SHELF_LIFE_TIERS: ShelfLifeTier[] = ['very-perishable', 'perishable', 'stable', 'shelf-stable']
+const SHELF_LIFE_TIERS: ShelfLifeTier[] = ['very-perishable', 'perishable', 'stable', 'shelf-stable', 'frozen']
+
+const STORAGE_NOTE_PRESETS: Partial<Record<IngredientCategory, string[]>> = {
+  fruit:         ['Keep at room temperature', 'Store in fridge once ripe', 'Do not refrigerate until cut'],
+  veg:           ['Keep in fridge crisper drawer', 'Store in cool dark place', 'Do not wash until ready to use'],
+  'meat-protein':['Keep refrigerated, use within 2 days', 'Freeze if not using within 2 days', 'Store on bottom shelf of fridge'],
+  dairy:         ['Keep refrigerated', 'Keep refrigerated, consume by date', 'Store sealed to prevent odour absorption'],
+  'shelf-staple':['Store in cool dry place', 'Keep in airtight container', 'Keep away from heat and moisture'],
+  frozen:        ['Keep frozen at -18°C', 'Defrost in fridge overnight', 'Do not refreeze once thawed'],
+  snacks:        ['Keep in airtight container', 'Store in cool dry place'],
+  seasoning:     ['Keep in airtight container', 'Store away from heat and moisture', 'Keep in a dark cupboard'],
+}
 const ALL_TAGS: NutritionTag[] = [
   'high-protein', 'high-fibre', 'high-carb', 'high-fat', 'high-iron',
   'high-calcium', 'high-magnesium', 'high-vitamin-c', 'high-vitamin-d', 'high-omega-3',
@@ -85,6 +96,20 @@ export function IngredientForm({ ingredient, onClose }: Props) {
 
           <div className="form-control">
             <label className="label pb-1.5"><span className="label-text font-medium">Storage notes <span className="text-base-content/50 font-normal">(optional)</span></span></label>
+            {(STORAGE_NOTE_PRESETS[category] ?? []).length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-2">
+                {(STORAGE_NOTE_PRESETS[category] ?? []).map(preset => (
+                  <button
+                    key={preset}
+                    type="button"
+                    className="badge badge-ghost badge-sm cursor-pointer hover:badge-primary select-none"
+                    onClick={() => setStorageNotes(preset)}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+            )}
             <textarea
               className="textarea textarea-bordered w-full"
               value={storageNotes}

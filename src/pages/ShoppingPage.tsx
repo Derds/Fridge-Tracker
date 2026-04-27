@@ -16,6 +16,8 @@ export function ShoppingPage() {
   const [tab, setTab] = useState<'list' | 'suggestions'>('list')
   const [selectMode, setSelectMode] = useState(false)
   const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [suggSearch, setSuggSearch] = useState('')
+  const [suggCategory, setSuggCategory] = useState<IngredientCategory | 'all'>('all')
 
   useEffect(() => {
     loadOrCreateList()
@@ -56,9 +58,37 @@ export function ShoppingPage() {
     })).filter(g => g.items.length > 0)
   }, [list, depleted, ingredientMap])
 
-  const suggestionsCount = (list?.potentialItems.length ?? 0) + depleted.length
+  // Previously stocked (have inventory records) but not depleted/potential
+  const previouslyStocked = useMemo(() => {
+    if (!list) return [] as Ingredient[]
+    const alreadySuggested = new Set([
+      ...list.potentialItems.map(i => i.ingredientId),
+      ...list.actualItems.map(i => i.ingredientId),
+      ...depleted.map(i => i.id!),
+    ])
+    const inventoryIngIds = new Set(inventory.map(i => i.ingredientId))
+    return ingredients.filter(i => i.id != null && inventoryIngIds.has(i.id!) && !alreadySuggested.has(i.id!))
+  }, [inventory, ingredients, list, depleted])
 
-  // Group actual list by category
+  // All catalog items not in list and not already suggested
+  const allUnlisted = useMemo(() => {
+    if (!list) return [] as Ingredient[]
+    const alreadySuggested = new Set([
+      ...list.potentialItems.map(i => i.ingredientId),
+      ...list.actualItems.map(i => i.ingredientId),
+      ...depleted.map(i => i.id!),
+      ...previouslyStocked.map(i => i.id!),
+    ])
+    return ingredients.filter(i => i.id != null && !alreadySuggested.has(i.id!))
+  }, [ingredients, list, depleted, previouslyStocked])
+
+  function matchesSuggFilter(ing: Ingredient) {
+    if (suggCategory !== 'all' && ing.category !== suggCategory) return false
+    if (suggSearch && !ing.name.toLowerCase().includes(suggSearch.toLowerCase())) return false
+    return true
+  }
+
+  const suggestionsCount = (list?.potentialItems.length ?? 0) + depleted.length
   const grouped = useMemo(() => {
     if (!list) return new Map<string, ShoppingListItem[]>()
     const map = new Map<string, ShoppingListItem[]>()
@@ -229,33 +259,116 @@ export function ShoppingPage() {
       {/* ── Suggestions ── */}
       {tab === 'suggestions' && (
         <div>
-          {suggestionsGrouped.length === 0 ? (
+          {/* Search + category filter */}
+          <div className="flex gap-2 mb-3">
+            <label className="input input-bordered input-sm flex items-center gap-2 flex-1">
+              <input
+                className="grow"
+                placeholder="Search ingredients…"
+                value={suggSearch}
+                onChange={e => setSuggSearch(e.target.value)}
+              />
+            </label>
+            <select
+              className="select select-bordered select-sm"
+              value={suggCategory}
+              onChange={e => setSuggCategory(e.target.value as IngredientCategory | 'all')}
+            >
+              <option value="all">All categories</option>
+              {CATEGORY_ORDER.map(cat => (
+                <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Meal plan + depleted suggestions */}
+          {suggestionsGrouped.filter(g => g.items.some(e => matchesSuggFilter(e.ingredient))).length > 0 && (
+            <div className="mb-5">
+              <p className="text-xs font-semibold text-base-content/40 uppercase tracking-wide mb-2">Suggested for you</p>
+              {suggestionsGrouped.map(({ cat, items }) => {
+                const filtered = items.filter(e => matchesSuggFilter(e.ingredient))
+                if (!filtered.length) return null
+                const Icon = CATEGORY_ICONS[cat]
+                return (
+                  <div key={cat} className="mb-4">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-base-content/50 uppercase tracking-wide mb-2">
+                      {Icon && <Icon size={13} />}
+                      <span>{CATEGORY_LABELS[cat]}</span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      {filtered.map(({ ingredient, reason, fromPotential }) => (
+                        <SuggestionRow
+                          key={ingredient.id}
+                          ingredient={ingredient}
+                          reason={reason}
+                          onAdd={() => moveToActual(ingredient.id!)}
+                          onDismiss={fromPotential ? () => removeFromPotential(ingredient.id!) : undefined}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Previously stocked */}
+          {previouslyStocked.filter(matchesSuggFilter).length > 0 && (
+            <div className="mb-5">
+              <p className="text-xs font-semibold text-base-content/40 uppercase tracking-wide mb-2">Previously stocked</p>
+              {CATEGORY_ORDER.map(cat => {
+                const items = previouslyStocked.filter(i => i.category === cat && matchesSuggFilter(i))
+                if (!items.length) return null
+                const Icon = CATEGORY_ICONS[cat]
+                return (
+                  <div key={cat} className="mb-4">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-base-content/50 uppercase tracking-wide mb-2">
+                      {Icon && <Icon size={13} />}
+                      <span>{CATEGORY_LABELS[cat]}</span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      {items.map(ingredient => (
+                        <SuggestionRow key={ingredient.id} ingredient={ingredient} reason="previously stocked" onAdd={() => moveToActual(ingredient.id!)} />
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Browse all catalog */}
+          {allUnlisted.filter(matchesSuggFilter).length > 0 && (
+            <details className="mb-5">
+              <summary className="text-xs font-semibold text-base-content/40 uppercase tracking-wide cursor-pointer mb-2 list-none flex items-center gap-1">
+                <span>Browse all ingredients</span>
+                <span className="badge badge-ghost badge-xs">{allUnlisted.filter(matchesSuggFilter).length}</span>
+              </summary>
+              {CATEGORY_ORDER.map(cat => {
+                const items = allUnlisted.filter(i => i.category === cat && matchesSuggFilter(i))
+                if (!items.length) return null
+                const Icon = CATEGORY_ICONS[cat]
+                return (
+                  <div key={cat} className="mb-4">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-base-content/50 uppercase tracking-wide mb-2">
+                      {Icon && <Icon size={13} />}
+                      <span>{CATEGORY_LABELS[cat]}</span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      {items.map(ingredient => (
+                        <SuggestionRow key={ingredient.id} ingredient={ingredient} onAdd={() => moveToActual(ingredient.id!)} />
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </details>
+          )}
+
+          {suggestionsGrouped.length === 0 && previouslyStocked.length === 0 && allUnlisted.length === 0 && (
             <div className="text-center py-12 text-base-content/50">
               <p className="text-sm">No suggestions — everything seems stocked up!</p>
             </div>
-          ) : (
-            suggestionsGrouped.map(({ cat, items }) => {
-              const Icon = CATEGORY_ICONS[cat]
-              return (
-                <div key={cat} className="mb-5">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-base-content/50 uppercase tracking-wide mb-2">
-                    {Icon && <Icon size={13} />}
-                    <span>{CATEGORY_LABELS[cat]}</span>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    {items.map(({ ingredient, reason, fromPotential }) => (
-                      <SuggestionRow
-                        key={ingredient.id}
-                        ingredient={ingredient}
-                        reason={reason}
-                        onAdd={() => moveToActual(ingredient.id!)}
-                        onDismiss={fromPotential ? () => removeFromPotential(ingredient.id!) : undefined}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )
-            })
           )}
         </div>
       )}
