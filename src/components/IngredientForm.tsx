@@ -48,9 +48,11 @@ export function IngredientForm({ ingredient, onClose }: Props) {
 
   return (
     <dialog className="modal modal-open">
-      <div className="modal-box w-full max-w-md p-6">
-        <h3 className="font-bold text-lg mb-5">{isEdit ? 'Edit Ingredient' : 'New Ingredient'}</h3>
-
+      <div className="modal-box w-full max-w-md p-0 overflow-hidden">
+        <div className="bg-accent/15 px-6 py-4">
+          <h3 className="font-bold text-lg text-accent-content">{isEdit ? 'Edit Ingredient' : 'New Ingredient'}</h3>
+        </div>
+        <div className="px-6 pt-4 pb-6">
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div className="form-control">
             <label className="label pb-1.5"><span className="label-text font-medium">Name *</span></label>
@@ -120,6 +122,7 @@ export function IngredientForm({ ingredient, onClose }: Props) {
             </button>
           </div>
         </form>
+        </div>
       </div>
       <div className="modal-backdrop" onClick={onClose} />
     </dialog>

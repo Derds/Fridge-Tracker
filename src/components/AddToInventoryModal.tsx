@@ -1,170 +1,139 @@
-import { useState, useEffect, useMemo } from 'react'
-import { useIngredientStore, CATEGORY_LABELS, CATEGORY_ORDER } from '../store/ingredientStore'
+import { useState, useMemo, useEffect } from 'react'
+import { useIngredientStore } from '../store/ingredientStore'
 import { calcExpiryDate } from '../store/inventoryStore'
-import type { InventoryItem } from '../types'
-import { MagnifyingGlass, ArrowLeft } from '@phosphor-icons/react'
+import { IngredientPicker } from './IngredientPicker'
+import type { Ingredient, InventoryItem } from '../types'
+import { ArrowLeft } from '@phosphor-icons/react'
 
 interface Props {
   onClose: () => void
   onAdd: (item: Omit<InventoryItem, 'id' | 'addedAt'>) => Promise<void>
 }
 
+type Step = 'pick' | 'configure'
+
+interface BatchEntry {
+  ingredient: Ingredient
+  servings: number
+}
+
 export function AddToInventoryModal({ onClose, onAdd }: Props) {
   const { ingredients, loadIngredients } = useIngredientStore()
-  const [search, setSearch] = useState('')
-  const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [servings, setServings] = useState(1)
+  const [step, setStep] = useState<Step>('pick')
+  const [batch, setBatch] = useState<BatchEntry[]>([])
   const [purchaseDate, setPurchaseDate] = useState(() => new Date().toISOString().slice(0, 10))
-  const [useCustomExpiry, setUseCustomExpiry] = useState(false)
-  const [customExpiry, setCustomExpiry] = useState('')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => { loadIngredients() }, [loadIngredients])
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase()
-    return ingredients.filter(i => !q || i.name.toLowerCase().includes(q))
-  }, [ingredients, search])
+  const existingIds = useMemo(() => new Set<number>(), [])
 
-  const grouped = useMemo(() => {
-    const map = new Map<string, typeof filtered>()
-    CATEGORY_ORDER.forEach(c => {
-      const items = filtered.filter(i => i.category === c)
-      if (items.length) map.set(c, items)
-    })
-    return map
-  }, [filtered])
+  function handlePickConfirm(selected: Ingredient[]) {
+    setBatch(selected.map(i => ({ ingredient: i, servings: 1 })))
+    setStep('configure')
+  }
 
-  const selected = ingredients.find(i => i.id === selectedId)
+  function setServings(id: number, val: number) {
+    setBatch(b => b.map(e => e.ingredient.id === id ? { ...e, servings: Math.max(1, val) } : e))
+  }
 
-  const previewExpiry = useMemo(() => {
-    if (!selected) return null
-    if (useCustomExpiry && customExpiry) return new Date(customExpiry)
-    return calcExpiryDate(new Date(purchaseDate), selected.shelfLifeTier)
-  }, [selected, purchaseDate, useCustomExpiry, customExpiry])
-
-  const handleAdd = async () => {
-    if (!selectedId || !selected) return
+  async function handleAddAll() {
     setSaving(true)
     const pd = new Date(purchaseDate)
-    const expiry = useCustomExpiry && customExpiry
-      ? new Date(customExpiry)
-      : calcExpiryDate(pd, selected.shelfLifeTier)
-    await onAdd({
-      ingredientId: selectedId,
-      purchaseDate: pd,
-      expiryDate: expiry,
-      servings,
-      servingsRemaining: servings,
-    })
+    for (const { ingredient, servings } of batch) {
+      const expiry = calcExpiryDate(pd, ingredient.shelfLifeTier)
+      await onAdd({
+        ingredientId: ingredient.id!,
+        purchaseDate: pd,
+        expiryDate: expiry,
+        servings,
+        servingsRemaining: servings,
+      })
+    }
     setSaving(false)
     onClose()
   }
 
   return (
     <dialog className="modal modal-open">
-      <div className="modal-box w-full max-w-lg flex flex-col max-h-[90vh]">
-        <h3 className="font-bold text-lg mb-3">Add to Fridge</h3>
+      <div className="modal-box w-full max-w-lg flex flex-col max-h-[90vh] p-0 overflow-hidden">
+        {/* Coloured header band */}
+        <div className="bg-primary/10 px-6 py-4 shrink-0">
+          <h3 className="font-bold text-lg text-primary">Add to Inventory</h3>
+          <p className="text-sm text-base-content/60 mt-0.5">
+            {step === 'pick' ? 'Select one or more ingredients' : `${batch.length} ingredient${batch.length !== 1 ? 's' : ''} selected`}
+          </p>
+        </div>
 
-        {/* Ingredient picker */}
-        {!selected ? (
-          <>
-            <label className="input input-bordered flex items-center gap-2 mb-3">
-              <MagnifyingGlass size={16} className="opacity-70 flex-shrink-0" />
-              <input
-                className="grow"
-                placeholder="Search ingredients…"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                autoFocus
-              />
-            </label>
-            <div className="overflow-y-auto flex-1">
-              {[...grouped.entries()].map(([cat, items]) => (
-                <div key={cat} className="mb-3">
-                  <p className="text-xs font-semibold text-base-content/50 uppercase tracking-wide mb-1 px-1">
-                    {CATEGORY_LABELS[cat as keyof typeof CATEGORY_LABELS]}
-                  </p>
-                  {items.map(i => (
-                    <button
-                      key={i.id}
-                      type="button"
-                      onClick={() => setSelectedId(i.id!)}
-                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-base-200 text-sm"
-                    >
-                      {i.name}
-                      <span className="text-base-content/40 text-xs ml-2">{i.storageNotes}</span>
-                    </button>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </>
-        ) : (
-          /* Detail form once ingredient selected */
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setSelectedId(null)} className="btn btn-ghost btn-xs gap-1"><ArrowLeft size={14} /> Back</button>
-              <span className="font-semibold">{selected.name}</span>
-            </div>
+        <div className="flex flex-col flex-1 min-h-0 px-6 py-4">
+          {step === 'pick' ? (
+            <IngredientPicker
+              ingredients={ingredients}
+              excludeIds={existingIds}
+              onConfirm={handlePickConfirm}
+              confirmLabel={n => `Configure ${n} item${n !== 1 ? 's' : ''} →`}
+            />
+          ) : (
+            <div className="flex flex-col gap-4 flex-1 min-h-0">
+              <button
+                type="button"
+                className="btn btn-ghost btn-xs gap-1 self-start"
+                onClick={() => setStep('pick')}
+              >
+                <ArrowLeft size={14} /> Back to selection
+              </button>
 
-            {selected.storageNotes && (
-              <p className="text-sm text-base-content/60 bg-base-200 rounded-lg px-3 py-2">{selected.storageNotes}</p>
-            )}
-
-            <label className="form-control">
-              <div className="label"><span className="label-text">Servings / portions</span></div>
-              <div className="flex items-center gap-3">
-                <button type="button" className="btn btn-outline btn-sm btn-square" onClick={() => setServings(s => Math.max(1, s - 1))}>−</button>
-                <span className="text-xl font-bold w-8 text-center">{servings}</span>
-                <button type="button" className="btn btn-outline btn-sm btn-square" onClick={() => setServings(s => s + 1)}>+</button>
-              </div>
-            </label>
-
-            <label className="form-control">
-              <div className="label"><span className="label-text">Purchase date</span></div>
-              <input
-                type="date"
-                className="input input-bordered"
-                value={purchaseDate}
-                onChange={e => setPurchaseDate(e.target.value)}
-              />
-            </label>
-
-            <div className="form-control">
-              <label className="label cursor-pointer justify-start gap-3">
-                <input
-                  type="checkbox"
-                  className="checkbox checkbox-sm"
-                  checked={useCustomExpiry}
-                  onChange={e => setUseCustomExpiry(e.target.checked)}
-                />
-                <span className="label-text">Set custom use-by date</span>
-              </label>
-              {useCustomExpiry && (
+              {/* Shared purchase date */}
+              <div className="form-control">
+                <label className="label pb-1.5">
+                  <span className="label-text font-medium">Purchase date (applies to all)</span>
+                </label>
                 <input
                   type="date"
-                  className="input input-bordered mt-2"
-                  value={customExpiry}
-                  onChange={e => setCustomExpiry(e.target.value)}
-                  min={purchaseDate}
+                  className="input input-bordered"
+                  value={purchaseDate}
+                  onChange={e => setPurchaseDate(e.target.value)}
                 />
-              )}
+              </div>
+
+              {/* Per-item servings */}
+              <div className="flex flex-col gap-2 overflow-y-auto flex-1">
+                {batch.map(({ ingredient, servings }) => {
+                  const expiry = calcExpiryDate(new Date(purchaseDate), ingredient.shelfLifeTier)
+                  return (
+                    <div key={ingredient.id} className="flex items-center gap-3 bg-base-200 rounded-xl px-4 py-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">{ingredient.name}</p>
+                        <p className="text-xs text-base-content/50 mt-0.5">
+                          Use by {expiry.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-xs btn-square"
+                          onClick={() => setServings(ingredient.id!, servings - 1)}
+                        >−</button>
+                        <span className="text-base font-bold w-6 text-center">{servings}</span>
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-xs btn-square"
+                          onClick={() => setServings(ingredient.id!, servings + 1)}
+                        >+</button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
+          )}
+        </div>
 
-            {previewExpiry && (
-              <p className="text-sm text-base-content/60">
-                Use by: <span className="font-medium text-base-content">{previewExpiry.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-              </p>
-            )}
-          </div>
-        )}
-
-        <div className="modal-action mt-4 shrink-0">
-          <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          {selected && (
-            <button type="button" className="btn btn-primary" onClick={handleAdd} disabled={saving}>
-              {saving ? <span className="loading loading-spinner loading-sm" /> : 'Add to fridge'}
+        <div className="modal-action px-6 pb-4 mt-0 shrink-0 border-t border-base-200 pt-3">
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
+          {step === 'configure' && (
+            <button type="button" className="btn btn-primary btn-sm" onClick={handleAddAll} disabled={saving}>
+              {saving ? <span className="loading loading-spinner loading-sm" /> : `Add ${batch.length} to inventory`}
             </button>
           )}
         </div>

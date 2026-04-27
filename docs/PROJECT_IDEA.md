@@ -37,3 +37,4 @@ Further ideas
 - connect key details to sync thing?
 - meal plan costing -> scrape ingredient prices from supermarket websites -> add this to own feature folder
 - substitutions in meal plan eg doesnt matter which rice or greens, just want one of them
+- optional ingredients eg toppings?

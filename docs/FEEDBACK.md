@@ -1,3 +1,4 @@
+Addressed : 
 Meals 
 --> in progress
 
@@ -15,4 +16,21 @@ In the meals section, if i click on make suggested shopping list it claims shopp
 
 in the shopping section 
 i want to be able to sort the suggestions by categories, i also dont want suggestions to always contain every ingredient in the catalog, just the recently used ones or planned ones. ask me more questions about the shopping list to make sure we are both clear about requirments / usage
+
+----
+
+in the add to fridge modal, the search ingredients should be a little taller
+in the add to fridge lets also include some sorting by category for quicker adding, lets also add a way to select multiple items at once instead of having to add inventory one by one
+ in all of the modals, lets add some of the colours from the pallette to titles or backgrouns.
+
+in the add to list there seems to be a bug where items added to list arent being displayed at all, i also want to be able to multi-select items to add to list, and sort by category like in the other modals. 
+
+the multiselect ingredients and sort controls should probably be extracted to a reused component instead of duplicated in several places
+
+theres 
+
+in the catalog page, just rename it ingredients. for the list of ingredients have the name be bolder in colour but have it be in line with the ingredient details (perishavle, high fibre etc) instead of on a new line like currently
+
+----
+To be addressed:
 

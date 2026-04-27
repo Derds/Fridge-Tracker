@@ -3,8 +3,9 @@ import { useShoppingStore } from '../store/shoppingStore'
 import { useIngredientStore, CATEGORY_LABELS, CATEGORY_ORDER } from '../store/ingredientStore'
 import { useInventoryStore } from '../store/inventoryStore'
 import { CATEGORY_ICONS } from '../components/CatalogFilters'
+import { IngredientPicker } from '../components/IngredientPicker'
 import type { Ingredient, IngredientCategory, ShoppingListItem } from '../types'
-import { ShoppingCart, Plus, X, MagnifyingGlass, Trash } from '@phosphor-icons/react'
+import { ShoppingCart, Plus, X, Trash } from '@phosphor-icons/react'
 
 export function ShoppingPage() {
   const { list, loading, loadOrCreateList, moveToActual, removeFromActual,
@@ -239,7 +240,7 @@ export function ShoppingPage() {
             ...(list?.potentialItems.map(i => i.ingredientId) ?? []),
             ...(list?.actualItems.map(i => i.ingredientId) ?? []),
           ])}
-          onAdd={async (id) => { await addManual(id); setAddOpen(false) }}
+          onAdd={async (ids) => { for (const id of ids) await addManual(id); setAddOpen(false) }}
           onClose={() => setAddOpen(false)}
         />
       )}
@@ -277,49 +278,26 @@ function SuggestionRow({ ingredient, reason, onAdd, onDismiss }: {
 function AddManualModal({ ingredients, existingIds, onAdd, onClose }: {
   ingredients: Ingredient[]
   existingIds: Set<number>
-  onAdd: (id: number) => Promise<void>
+  onAdd: (ids: number[]) => Promise<void>
   onClose: () => void
 }) {
-  const [search, setSearch] = useState('')
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase()
-    return ingredients.filter(i => !existingIds.has(i.id!) && (!q || i.name.toLowerCase().includes(q)))
-  }, [ingredients, existingIds, search])
-
-  const grouped = useMemo(() => {
-    const map = new Map<string, typeof filtered>()
-    CATEGORY_ORDER.forEach(c => {
-      const items = filtered.filter(i => i.category === c)
-      if (items.length) map.set(c, items)
-    })
-    return map
-  }, [filtered])
-
   return (
     <dialog className="modal modal-open">
-      <div className="modal-box w-full max-w-md flex flex-col max-h-[85vh] p-6">
-        <h3 className="font-bold text-lg mb-3">Add to list</h3>
-        <label className="input input-bordered flex items-center gap-2 mb-3">
-          <MagnifyingGlass size={16} className="opacity-50 flex-shrink-0" />
-          <input className="grow" placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)} autoFocus />
-        </label>
-        <div className="overflow-y-auto flex-1">
-          {[...grouped.entries()].map(([cat, items]) => (
-            <div key={cat} className="mb-3">
-              <p className="text-xs font-semibold text-base-content/50 uppercase tracking-wide mb-1 px-1">
-                {CATEGORY_LABELS[cat as IngredientCategory]}
-              </p>
-              {items.map(i => (
-                <button key={i.id} type="button" onClick={() => onAdd(i.id!)}
-                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-base-200 text-sm">
-                  {i.name}
-                </button>
-              ))}
-            </div>
-          ))}
+      <div className="modal-box w-full max-w-md flex flex-col max-h-[85vh] p-0 overflow-hidden">
+        <div className="bg-secondary/10 px-6 py-4 shrink-0">
+          <h3 className="font-bold text-lg text-secondary">Add to shopping list</h3>
+          <p className="text-sm text-base-content/60 mt-0.5">Select items to add directly to My List</p>
         </div>
-        <div className="modal-action mt-3 shrink-0">
-          <button className="btn btn-ghost" onClick={onClose}>Close</button>
+        <div className="flex flex-col flex-1 min-h-0 px-6 py-4">
+          <IngredientPicker
+            ingredients={ingredients}
+            excludeIds={existingIds}
+            onConfirm={(selected) => onAdd(selected.map(i => i.id!))}
+            confirmLabel={n => `Add ${n} to list`}
+          />
+        </div>
+        <div className="modal-action px-6 pb-4 mt-0 shrink-0 border-t border-base-200 pt-3">
+          <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>
         </div>
       </div>
       <div className="modal-backdrop" onClick={onClose} />

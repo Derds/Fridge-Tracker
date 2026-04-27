@@ -63,8 +63,11 @@ export function MealForm({ meal, onSave, onClose }: Props) {
 
   return (
     <dialog className="modal modal-open">
-      <div className="modal-box w-full max-w-lg overflow-visible p-6">
-        <h3 className="font-bold text-lg mb-5">{meal ? 'Edit meal' : 'New meal'}</h3>
+      <div className="modal-box w-full max-w-lg overflow-visible p-0">
+        <div className="bg-primary/10 px-6 py-4">
+          <h3 className="font-bold text-lg text-primary">{meal ? 'Edit meal' : 'New meal'}</h3>
+        </div>
+        <div className="px-6 pt-4 pb-6">
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
 
           <div className="form-control">
@@ -171,6 +174,7 @@ export function MealForm({ meal, onSave, onClose }: Props) {
             </button>
           </div>
         </form>
+        </div>
       </div>
       <div className="modal-backdrop" onClick={onClose} />
     </dialog>

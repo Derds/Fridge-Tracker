@@ -152,7 +152,7 @@ export const useShoppingStore = create<ShoppingStore>((set, get) => ({
     const inActual = list.actualItems.some(i => i.ingredientId === ingredientId)
     const inPotential = list.potentialItems.some(i => i.ingredientId === ingredientId)
     if (inActual || inPotential) return
-    const updated = { ...list, potentialItems: [...list.potentialItems, { ingredientId, reason: 'manual' as const, checked: false }] }
+    const updated = { ...list, actualItems: [...list.actualItems, { ingredientId, reason: 'manual' as const, checked: false }] }
     await saveList(updated)
     set({ list: updated })
   },

@@ -564,13 +564,15 @@ function ShoppingReviewModal({ items, onConfirm, onClose }: {
 
   return (
     <dialog className="modal modal-open">
-      <div className="modal-box w-full max-w-md p-6">
-        <h3 className="font-bold text-lg mb-1">Shopping list from meal plan</h3>
-        <p className="text-sm text-base-content/60 mb-4">
-          These ingredients aren't currently in stock. Select the ones you need to buy.
-        </p>
+      <div className="modal-box w-full max-w-md p-0 overflow-hidden">
+        <div className="bg-primary/10 px-6 py-4 shrink-0">
+          <h3 className="font-bold text-lg text-primary">Shopping list from meal plan</h3>
+          <p className="text-sm text-base-content/60 mt-0.5">
+            These ingredients aren't currently in stock. Select the ones you need to buy.
+          </p>
+        </div>
 
-        <div className="max-h-72 overflow-y-auto flex flex-col gap-4">
+        <div className="px-6 py-4 max-h-72 overflow-y-auto flex flex-col gap-4">
           {grouped.map(({ cat, items: catItems }) => {
             const Icon = CATEGORY_ICONS[cat]
             return (
@@ -597,7 +599,7 @@ function ShoppingReviewModal({ items, onConfirm, onClose }: {
           })}
         </div>
 
-        <div className="flex items-center justify-between mt-5 pt-4 border-t border-base-200">
+        <div className="flex items-center justify-between px-6 pb-4 pt-3 border-t border-base-200">
           <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
           <button
             className="btn btn-primary btn-sm gap-1.5"

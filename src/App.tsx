@@ -17,7 +17,7 @@ const NAV: NavItem[] = [
   { id: 'meals',     label: 'Meals',     Icon: ForkKnife   },
   { id: 'inventory', label: 'Inventory', Icon: Package     },
   { id: 'shopping',  label: 'Shopping',  Icon: ShoppingCart },
-  { id: 'catalog',   label: 'Catalog',   Icon: ListBullets },
+  { id: 'catalog',   label: 'Ingredients', Icon: ListBullets },
 ]
 
 function App() {

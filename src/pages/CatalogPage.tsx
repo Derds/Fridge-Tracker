@@ -47,7 +47,7 @@ export function CatalogPage() {
     <div className="max-w-3xl mx-auto px-4 py-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Ingredient Catalog</h1>
+          <h1 className="text-2xl font-bold">Ingredients</h1>
           <p className="text-base-content/60 text-sm mt-1">{ingredients.length} ingredients</p>
         </div>
         <button className="btn btn-primary btn-sm gap-1" onClick={() => { setEditing(undefined); setFormOpen(true) }}>
@@ -79,15 +79,15 @@ export function CatalogPage() {
               <div key={ingredient.id} className="card card-compact bg-base-200 hover:bg-base-300 transition-colors">
                 <div className="card-body flex-row items-center gap-3 py-3">
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{ingredient.name}</p>
-                    <div className="flex flex-wrap gap-1 mt-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="font-semibold text-primary truncate">{ingredient.name}</span>
                       <ShelfLifeBadge tier={ingredient.shelfLifeTier} />
                       {ingredient.nutritionTags?.map(tag => (
                         <span key={tag} className="badge badge-ghost badge-sm">{tag}</span>
                       ))}
                     </div>
                     {ingredient.storageNotes && (
-                      <p className="text-xs text-base-content/50 mt-1 truncate">{ingredient.storageNotes}</p>
+                      <p className="text-xs text-base-content/50 mt-0.5 truncate">{ingredient.storageNotes}</p>
                     )}
                   </div>
                   <div className="flex gap-1 shrink-0">
