@@ -23,11 +23,47 @@ import {
   COOKING_TIME_LABELS, COOKING_TIME_BADGE,
   INGREDIENT_ROLE_BADGE_DISPLAY,
 } from '../types'
-import { ForkKnife, Plus, PencilSimple, Trash, X, ArrowLeft, ArrowRight, ShoppingCart, ChartBar } from '@phosphor-icons/react'
+import { ForkKnife, Plus, PencilSimple, Trash, X, ArrowLeft, ArrowRight, ShoppingCart, ChartBar, ArrowSquareOut, UploadSimple } from '@phosphor-icons/react'
 import { CATEGORY_ICONS } from '../components/CatalogFilters'
 import { CATEGORY_LABELS, CATEGORY_ORDER } from '../store/ingredientStore'
 
 const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+function exportMeals(meals: Meal[]) {
+  const data = meals.map(({ name, ingredients, notes, cookingTime }) => ({ name, ingredients, notes, cookingTime }))
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `fridge-meals-${new Date().toISOString().slice(0, 10)}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+async function importMeals(
+  file: File,
+  addMeal: (m: Omit<Meal, 'id' | 'createdAt'>) => Promise<unknown>,
+  loadMeals: () => Promise<void>,
+  setMsg: (m: { ok: boolean; text: string } | null) => void
+) {
+  try {
+    const text = await file.text()
+    const data = JSON.parse(text)
+    if (!Array.isArray(data)) throw new Error('Expected an array of meals')
+    let imported = 0
+    for (const item of data) {
+      if (typeof item.name === 'string' && Array.isArray(item.ingredients)) {
+        await addMeal({ name: item.name, ingredients: item.ingredients, notes: item.notes ?? '', cookingTime: item.cookingTime ?? 'medium' })
+        imported++
+      }
+    }
+    await loadMeals()
+    setMsg({ ok: true, text: `Imported ${imported} meal${imported !== 1 ? 's' : ''} successfully.` })
+    setTimeout(() => setMsg(null), 4000)
+  } catch (e) {
+    setMsg({ ok: false, text: `Import failed: ${e instanceof Error ? e.message : 'Unknown error'}` })
+  }
+}
 
 interface Props {
   onNavigateToShopping: () => void
@@ -42,6 +78,7 @@ export function MealsPage({ onNavigateToShopping }: Props) {
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [reviewItems, setReviewItems] = useState<{ ingredient: Ingredient; isCore: boolean }[] | null>(null)
   const [showNutrition, setShowNutrition] = useState(false)
+  const [importMsg, setImportMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
   const { meals, loadMeals, addMeal, updateMeal, deleteMeal } = useMealStore()
   const { plan, weekStart, loading: planLoading, loadWeek, addMealToDay, removeMealFromDay } = useWeekPlannerStore()
@@ -187,10 +224,44 @@ export function MealsPage({ onNavigateToShopping }: Props) {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-bold">Meals</h1>
-            <button className="btn btn-primary btn-sm gap-1" onClick={() => { setEditMeal(undefined); setShowForm(true) }}>
-              <Plus size={15} weight="bold" /> New meal
-            </button>
+            <div className="flex gap-2">
+              {meals.length > 0 && (
+                <button
+                  className="btn btn-ghost btn-sm gap-1.5 text-base-content/60"
+                  onClick={() => exportMeals(meals)}
+                  title="Export meals as JSON backup"
+                >
+                  <ArrowSquareOut size={15} /> Export
+                </button>
+              )}
+              <label
+                className="btn btn-ghost btn-sm gap-1.5 text-base-content/60 cursor-pointer"
+                title="Import meals from JSON file"
+              >
+                <UploadSimple size={15} /> Import
+                <input
+                  type="file"
+                  accept=".json"
+                  className="hidden"
+                  onChange={e => {
+                    const file = e.target.files?.[0]
+                    if (file) importMeals(file, addMeal, loadMeals, setImportMsg)
+                    e.target.value = ''
+                  }}
+                />
+              </label>
+              <button className="btn btn-primary btn-sm gap-1" onClick={() => { setEditMeal(undefined); setShowForm(true) }}>
+                <Plus size={15} weight="bold" /> New meal
+              </button>
+            </div>
           </div>
+
+          {importMsg && (
+            <div className={`alert alert-sm mb-4 py-2 ${importMsg.ok ? 'alert-success' : 'alert-error'}`}>
+              <span className="text-sm">{importMsg.text}</span>
+              <button className="btn btn-ghost btn-xs ml-auto" onClick={() => setImportMsg(null)}>✕</button>
+            </div>
+          )}
 
           {meals.length === 0 ? (
             <div className="text-center py-12 text-base-content/40">
@@ -780,17 +851,19 @@ function NutritionBar({ label, days, total, barClass }: {
   barClass: string
 }) {
   const pct = total > 0 ? Math.round((days / total) * 100) : 0
-  // De-saturate to warning/muted when coverage is low
-  const fill = pct >= 57 ? barClass : pct >= 28 ? 'bg-warning' : 'bg-base-300'
+  // Never use the same colour as the track (bg-base-300) for the fill
+  const fill = days === 0 ? '' : pct >= 57 ? barClass : pct >= 28 ? 'bg-warning' : 'bg-base-content/25'
 
   return (
     <div className="flex items-center gap-2">
       <span className="text-xs text-base-content/60 w-24 shrink-0">{label}</span>
-      <div className="flex-1 h-1.5 bg-base-300 rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all duration-500 ${fill}`}
-          style={{ width: `${pct}%` }}
-        />
+      <div className="flex-1 h-2 bg-base-300 rounded-full overflow-hidden">
+        {fill && (
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${fill}`}
+            style={{ width: `${Math.max(pct, 6)}%` }}
+          />
+        )}
       </div>
       <span className="text-[10px] text-base-content/40 w-8 text-right tabular-nums">{days}/{total}d</span>
     </div>

@@ -1,18 +1,22 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useIngredientStore, CATEGORY_ORDER, CATEGORY_LABELS } from '../store/ingredientStore'
+import { useInventoryStore } from '../store/inventoryStore'
 import type { IngredientCategory } from '../types'
 import type { Ingredient } from '../types'
 import { SearchInput, CategoryFilter, ShelfLifeBadge, CATEGORY_ICONS } from '../components/CatalogFilters'
 import { IngredientForm } from '../components/IngredientForm'
-import { PencilSimple, Trash, Plus } from '@phosphor-icons/react'
+import { QuickAddInventoryModal } from '../components/QuickAddInventoryModal'
+import { PencilSimple, Trash, Plus, Package } from '@phosphor-icons/react'
 
 export function CatalogPage() {
   const { ingredients, loading, loadIngredients, deleteIngredient } = useIngredientStore()
+  const { addItem } = useInventoryStore()
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<IngredientCategory | 'all'>('all')
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Ingredient | undefined>()
   const [confirmDelete, setConfirmDelete] = useState<Ingredient | null>(null)
+  const [quickAddIngredient, setQuickAddIngredient] = useState<Ingredient | null>(null)
 
   useEffect(() => { loadIngredients() }, [loadIngredients])
 
@@ -91,6 +95,14 @@ export function CatalogPage() {
                     )}
                   </div>
                   <div className="flex gap-1 shrink-0">
+                    <button
+                      className="btn btn-ghost btn-xs text-secondary"
+                      onClick={() => setQuickAddIngredient(ingredient)}
+                      aria-label="Add to inventory"
+                      title="Add to inventory"
+                    >
+                      <Package size={15} />
+                    </button>
                     <button className="btn btn-ghost btn-xs" onClick={() => handleEdit(ingredient)} aria-label="Edit"><PencilSimple size={15} /></button>
                     <button className="btn btn-ghost btn-xs text-error" onClick={() => setConfirmDelete(ingredient)} aria-label="Delete"><Trash size={15} /></button>
                   </div>
@@ -100,6 +112,14 @@ export function CatalogPage() {
           </div>
         </div>
       ))}
+
+      {quickAddIngredient && (
+        <QuickAddInventoryModal
+          ingredient={quickAddIngredient}
+          onAdd={addItem}
+          onClose={() => setQuickAddIngredient(null)}
+        />
+      )}
 
       {formOpen && (
         <IngredientForm

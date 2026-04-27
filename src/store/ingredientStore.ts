@@ -64,6 +64,7 @@ export const SHELF_LIFE_LABELS: Record<ShelfLifeTier, string> = {
   'perishable': 'Perishable (3–5 days)',
   'stable': 'Stable (1–2 weeks)',
   'shelf-stable': 'Shelf stable (months)',
+  'frozen': 'Frozen (months)',
 }
 
 export const CATEGORY_ORDER: IngredientCategory[] = [

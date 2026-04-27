@@ -79,6 +79,7 @@ export type ShelfLifeTier =
   | 'perishable'       // 3–5 days
   | 'stable'           // 1–2 weeks
   | 'shelf-stable'     // months
+  | 'frozen'           // months (frozen storage)
 
 export interface Ingredient {
   id?: number
@@ -144,4 +145,5 @@ export const SHELF_LIFE_DAYS: Record<ShelfLifeTier, number> = {
   'perishable': 4,
   'stable': 10,
   'shelf-stable': 180,
+  'frozen': 180,
 }

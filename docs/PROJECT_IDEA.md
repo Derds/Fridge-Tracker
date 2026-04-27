@@ -37,5 +37,14 @@ Further ideas
 - connect key details to sync thing?
 - meal plan costing -> scrape ingredient prices from supermarket websites -> add this to own feature folder
 - substitutions in meal plan eg doesnt matter which rice or greens, just want one of them
-- optional ingredients eg toppings?
+x optional ingredients eg toppings?
 - actual meals vs meal plan -> what did i actually eat -> this data shouldn't be saved to github nd should be exportable as json or csv
+- leftovers -> should be able to mark when you have leftovers in inventory from a dinner
+- ability for user to mark a meal as "out" in the meal plan - will be eating out -> could be a tick box on the section or a 
+- on the add meal part, allow the user to browse by cooking time
+- also allow the user to add just a single ingredient specifically on the snack part of the drag+drop (only by clicking the plus on snack)
+- allow select default storage notes for new ingredients
+- tickbox to mark meals as veggie 
+
+
+- llow some ingredients to be marked as 

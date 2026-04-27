@@ -296,3 +296,26 @@ export const NEW_INGREDIENTS_V3: SeedIngredient[] = [
   { name: 'Cocoa Powder', category: 'shelf-staple', shelfLifeTier: 'shelf-stable', storageNotes: 'Airtight container, cool dry place' },
   { name: 'Chocolate Chips', category: 'shelf-staple', shelfLifeTier: 'shelf-stable', storageNotes: 'Cool, dry cupboard. Away from strong smells' },
 ]
+
+export const NEW_INGREDIENTS_V4: SeedIngredient[] = [
+  // --- FROZEN READY MEALS & FREEZER STAPLES ---
+  { name: 'Chicken Kievs', category: 'frozen', shelfLifeTier: 'frozen', storageNotes: 'Keep frozen. Cook from frozen at 200°C for 30 min. Do not refreeze once thawed', nutritionTags: ['high-protein', 'high-fat'] },
+  { name: 'Breaded Chicken Fillets', category: 'frozen', shelfLifeTier: 'frozen', storageNotes: 'Keep frozen. Cook from frozen as per pack. Great in wraps and salads', nutritionTags: ['high-protein'] },
+  { name: 'Fish Fingers', category: 'frozen', shelfLifeTier: 'frozen', storageNotes: 'Keep frozen. Oven or air fryer from frozen', nutritionTags: ['high-protein', 'high-omega-3'] },
+  { name: 'Frozen Pizza (margherita)', category: 'frozen', shelfLifeTier: 'frozen', storageNotes: 'Keep frozen. Cook from frozen — check pack for temp and time', nutritionTags: ['high-carb'] },
+  { name: 'Frozen Pizza (pepperoni)', category: 'frozen', shelfLifeTier: 'frozen', storageNotes: 'Keep frozen. Cook from frozen', nutritionTags: ['high-carb', 'high-fat'] },
+  { name: 'Beef Burgers (frozen)', category: 'frozen', shelfLifeTier: 'frozen', storageNotes: 'Keep frozen. Cook thoroughly — no pink in the middle', nutritionTags: ['high-protein', 'high-fat', 'high-iron'] },
+  { name: 'Vegetable Spring Rolls', category: 'frozen', shelfLifeTier: 'frozen', storageNotes: 'Keep frozen. Oven or air fryer from frozen', nutritionTags: ['high-carb'] },
+  { name: 'Frozen Chips', category: 'frozen', shelfLifeTier: 'frozen', storageNotes: 'Keep frozen. Oven or air fryer from frozen. Straight-cut or crinkle', nutritionTags: ['high-carb'] },
+  { name: 'Frozen Peas', category: 'frozen', shelfLifeTier: 'frozen', storageNotes: 'Keep frozen. Boil or microwave from frozen — done in 3 minutes', nutritionTags: ['high-fibre', 'high-protein', 'high-vitamin-c'] },
+  { name: 'Frozen Sweetcorn', category: 'frozen', shelfLifeTier: 'frozen', storageNotes: 'Keep frozen. Great added straight to soups, rice dishes, or stir-fries', nutritionTags: ['high-fibre', 'high-carb'] },
+  { name: 'Frozen Mixed Vegetables', category: 'frozen', shelfLifeTier: 'frozen', storageNotes: 'Keep frozen. Boil, steam or microwave from frozen', nutritionTags: ['high-fibre', 'high-vitamin-c'] },
+  { name: 'Edamame (frozen)', category: 'frozen', shelfLifeTier: 'frozen', storageNotes: 'Keep frozen. Boil from frozen 3–5 min. Great as a snack or in salads', nutritionTags: ['high-protein', 'high-fibre'] },
+
+  // --- CHILLED READY MEALS ---
+  { name: 'Beef Lasagne (ready meal)', category: 'meat-protein', shelfLifeTier: 'perishable', storageNotes: 'Keep refrigerated. Use by date on pack. Microwave or oven', nutritionTags: ['high-protein', 'high-carb'] },
+  { name: 'Chicken Tikka Masala (ready meal)', category: 'meat-protein', shelfLifeTier: 'perishable', storageNotes: 'Keep refrigerated. Microwave 4–5 min. Serve with rice', nutritionTags: ['high-protein'] },
+  { name: 'Macaroni Cheese (ready meal)', category: 'dairy', shelfLifeTier: 'perishable', storageNotes: 'Keep refrigerated. Microwave or oven. Great with salad or garlic bread', nutritionTags: ['high-carb', 'high-calcium', 'high-fat'] },
+  { name: 'Chilli Con Carne (ready meal)', category: 'meat-protein', shelfLifeTier: 'perishable', storageNotes: 'Keep refrigerated. Microwave 4–5 min. Serve with rice or jacket potato', nutritionTags: ['high-protein', 'high-fibre', 'high-iron'] },
+  { name: 'Soup (carton)', category: 'shelf-staple', shelfLifeTier: 'shelf-stable', storageNotes: 'Store in cupboard. Fridge once opened, use within 3 days' },
+]

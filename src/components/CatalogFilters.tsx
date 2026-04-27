@@ -79,6 +79,7 @@ const SHELF_LIFE_BADGE_COLOURS: Record<ShelfLifeTier, string> = {
   'perishable': 'badge-warning',
   'stable': 'badge-info',
   'shelf-stable': 'badge-success',
+  'frozen': 'badge-info',
 }
 
 export function ShelfLifeBadge({ tier }: ShelfLifeBadgeProps) {
