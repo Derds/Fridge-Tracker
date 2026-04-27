@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import type { Meal, CookingTime, IngredientRole } from '../types'
 import { COOKING_TIME_LABELS, INGREDIENT_ROLE_LABELS, INGREDIENT_ROLE_BADGE } from '../types'
 import { useIngredientStore } from '../store/ingredientStore'
-import { MagnifyingGlass, X } from '@phosphor-icons/react'
+import { MagnifyingGlass, X, Link } from '@phosphor-icons/react'
 
 interface IngredientEntry {
   ingredientId: number
@@ -19,6 +19,7 @@ interface Props {
 export function MealForm({ meal, onSave, onClose }: Props) {
   const { ingredients, loadIngredients } = useIngredientStore()
   const [name, setName] = useState(meal?.name ?? '')
+  const [url, setUrl] = useState(meal?.url ?? '')
   const [notes, setNotes] = useState(meal?.notes ?? '')
   const [cookingTime, setCookingTime] = useState<CookingTime>(meal?.cookingTime ?? 'medium')
   const [isVegetarian, setIsVegetarian] = useState(meal?.isVegetarian ?? false)
@@ -66,7 +67,7 @@ export function MealForm({ meal, onSave, onClose }: Props) {
     if (!name.trim()) { setError('Name is required'); return }
     setSaving(true)
     try {
-      await onSave({ name: name.trim(), notes: notes.trim() || undefined, cookingTime, isVegetarian, ingredients: entries })
+      await onSave({ name: name.trim(), url: url.trim() || undefined, notes: notes.trim() || undefined, cookingTime, isVegetarian, ingredients: entries })
       onClose()
     } catch {
       setError('Something went wrong — please try again')
@@ -91,6 +92,19 @@ export function MealForm({ meal, onSave, onClose }: Props) {
               onChange={e => setName(e.target.value)}
               placeholder="e.g. Spaghetti bolognese"
               autoFocus
+            />
+          </div>
+
+          <div className="form-control">
+            <label className="label pb-1.5">
+              <span className="label-text font-medium flex items-center gap-1.5"><Link size={14} /> Recipe URL <span className="text-base-content/50 font-normal">(optional)</span></span>
+            </label>
+            <input
+              className="input input-bordered w-full"
+              type="url"
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              placeholder="https://..."
             />
           </div>
 

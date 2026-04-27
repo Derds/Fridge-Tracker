@@ -1,138 +1,106 @@
-# Fridge Inventory
+# 🥬 Fridge Inventory
 
-A personal, local-first PWA for tracking what's in your fridge and freezer, managing expiry dates, building shopping lists, and planning meals.
-
-All your data lives on your device — no accounts, no tracking, no cloud required.
+> A personal, local-first PWA for tracking your fridge, planning meals, and building smarter shopping lists.
+> **All data lives on your device — no accounts, no tracking, no cloud.**
 
 ---
 
-## Getting started
+## ✨ Features
 
-### Install as an app (recommended)
+### 🥗 Ingredients catalog
+- Browse all ingredients organised by category (veg, dairy, meat, shelf staples, frozen, seasonings and more)
+- Add custom ingredients with shelf life, storage notes, and nutrition tags
+- Pre-loaded with **200+ UK-friendly ingredients** including root vegetables, salad greens, seasonings, frozen staples, baking ingredients and ready meals
 
-Fridge Inventory is a Progressive Web App (PWA). You can install it directly from your browser — no app store needed.
+### 🧊 Inventory (fridge & freezer)
+- Track what you have in stock with servings and expiry dates
+- **Expiry alerts** — items nearing or past their use-by date are flagged
+- Add or subtract servings (great for leftovers)
+- Sort by category for quick scanning
+- Add inventory items directly from the ingredients catalog
+- Import items via CSV
+
+### 🍳 Meals
+- Build a library of your favourite meals with ingredients, cooking times, veggie flags and notes
+- Attach a **recipe URL** to any meal for quick reference
+- Ingredients marked as **core**, **optional** or **substitute** within each recipe
+- Browse by cooking time — from *very quick* (< 15 min) to *slow / decadent* (1 hr+)
+- Import and export your meals as JSON for backup or device migration
+
+### 📅 Week planner
+- Drag-and-drop meal planning across a 7-day grid
+- **Four slots per day**: breakfast, lunch, dinner and snack
+- Mark individual meal slots as **eating out** (🍴 per slot, not per day)
+- Mark days as **high energy** (⚡) for days when nutrition matters most
+- Schedule **meals to try** directly into the planner
+- Add single snack ingredients to snack slots directly
+
+### ✨ Meals to try
+- Collect recipe URLs, blogs and ideas you want to make some day
+- Tag with cooking time, veggie flag, notes and ingredient list
+- **"Meal tried!"** button converts a saved recipe into a full meal in one click
+- **Recipe blogs panel** — bookmark your favourite recipe sites and blogs for quick browsing
+
+### 🛒 Shopping list
+- Build lists manually or **generate from your meal plan**
+- Core and optional ingredients are separated — optional ones are deselected by default
+- Suggestions from recently used and planned ingredients
+- Sort and filter by category
+- Tick items off as you shop — ticked items automatically appear in your inventory
+
+### 📊 Nutrition summary
+- Visual weekly chart showing how balanced your planned meals are
+- Tracks protein, fibre, iron, vitamins, calcium and more across the week
+- Hidden by default — show when you want a nutrition overview
+
+### ⚙️ Settings
+- **Three colour themes**: Warm Pink (default), Classic, Dark
+- **Three font pairings**: Simple (system), Kitchen (Pacifico + Nunito), Cookbook (Playfair Display + Source Sans 3)
+- All preferences persisted locally
+
+---
+
+## 🚀 Getting started
+
+### Install as a PWA (recommended)
 
 **On mobile (Chrome / Safari):**
 1. Open the app URL in your browser
 2. Tap the share icon → **Add to Home Screen**
-3. Launch it like any other app — it works offline
 
 **On desktop (Chrome / Edge):**
 1. Open the app URL
-2. Click the install icon in the address bar (or open the browser menu → **Install Fridge Inventory**)
+2. Click the install icon in the address bar
 
-### Run locally (development)
+### Run locally
 
-Requirements: **Node.js 18+** and **npm**
+Requires **Node.js 18+**
 
 ```bash
 git clone https://github.com/Derds/fridge-inventory.git
 cd fridge-inventory
-./setup.sh
-```
-
-The setup script installs dependencies and starts the dev server. The app will open at `http://localhost:5173`.
-
-Or manually:
-
-```bash
 npm install --legacy-peer-deps
 npm run dev
 ```
 
-To build for production:
-
 ```bash
-npm run build
+npm run build    # production build
 ```
 
 ---
 
-## How to use the app
+## 🛠 Tech stack
 
-### Ingredient Catalog
-
-The catalog is a library of ingredients you can track. It comes pre-seeded with around 240 common UK supermarket ingredients across categories: fruit, veg, meat & protein, dairy, shelf staples, frozen, snacks, seasonings, plus Italian and Asian cooking staples.
-
-- **Search** by name using the search bar
-- **Filter** by category or shelf-life tier using the dropdowns
-- **Add** a new ingredient with the **+ New ingredient** button — only the name is required
-- **Edit or delete** any ingredient by tapping the pencil icon on its card
-- **Nutrition tags** (e.g. high-protein, high-fibre, low-fat) can be added when editing an ingredient — tap the tag pills to toggle them on or off
-
----
-
-### Fridge (Inventory)
-
-The Fridge tab shows everything currently in stock, sorted by expiry date (soonest first).
-
-**Adding items to your fridge:**
-1. Tap **+ Add item**
-2. Search for the ingredient in the catalog
-3. Set the number of servings and optionally a custom expiry date
-4. Tap **Add to fridge** — expiry is calculated automatically from the ingredient's shelf-life tier if you don't set one
-
-**Using up items:**
-- Tap the **−** button on any item to reduce the serving count by 1
-- When servings reach 0, the item is removed from inventory and flagged as depleted (it will appear in Shopping Suggestions)
-
-**Expiry management:**
-- Items expiring within 3 days appear at the top with a warning badge
-- Already-expired items are shown in a collapsible **Expired** section at the bottom
-- Tap **Clear all expired** to remove them in bulk
-
----
-
-### Shopping List
-
-The Shopping tab has two views:
-
-**My list** — your actual shopping list, grouped by category
-- Tick items off as you shop using the checkboxes
-- Tap **Clear ticked** to remove checked items when you're done
-- Tap ✕ on any item to remove it and send it back to Suggestions
-- Tap **+ Add item** to search the catalog and add anything manually
-
-**Suggestions** — auto-populated from depleted inventory items
-- Items that have run out appear here automatically
-- Tap **Add to list** to move an item to your actual shopping list
-- Tap ✕ to dismiss a suggestion without adding it
-
----
-
-### Meals (coming soon)
-
-Phase 3 will add a meal gallery and week planner — save named meals with ingredient lists, then drag them into a weekly plan and generate a shopping list from what's missing.
-
----
-
-## Data & privacy
-
-- All data is stored locally in your browser using IndexedDB
-- Nothing is sent to any server
-- No analytics, no telemetry, no accounts
-- To wipe your data: open browser DevTools → Application → IndexedDB → delete the `FridgeDatabase` database
-
-Export and import functionality is planned for a future release.
-
----
-
-## Project documentation
-
-- [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) — full requirements, tech stack decisions, and feature roadmap
-- [`docs/PROJECT_IDEA.md`](docs/PROJECT_IDEA.md) — original project brief and early ideas
-
----
-
-## Tech stack
-
-| Concern | Choice |
-|---|---|
-| Framework | React + TypeScript |
-| Build tool | Vite |
-| Styling | Tailwind CSS + DaisyUI |
+| Layer | Choice |
+|-------|--------|
+| Framework | React 19 + TypeScript + Vite 8 |
+| Styling | Tailwind CSS v4 + DaisyUI v5 |
+| Local storage | Dexie.js (IndexedDB) |
 | State | Zustand |
-| Storage | Dexie.js (IndexedDB) |
+| Drag & drop | @dnd-kit/core |
+| Icons | Phosphor Icons |
 | PWA | vite-plugin-pwa |
 
-All dependencies are free and open source.
+---
+
+*Made for personal use — open source, no telemetry, no backend.*

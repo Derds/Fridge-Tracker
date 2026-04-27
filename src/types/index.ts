@@ -104,6 +104,7 @@ export interface InventoryItem {
 export interface Meal {
   id?: number
   name: string
+  url?: string
   ingredients: Array<{ ingredientId: number; servings: number; role?: IngredientRole }>
   notes?: string
   cookingTime?: CookingTime

@@ -17,6 +17,7 @@ import { useIngredientStore } from '../store/ingredientStore'
 import { useInventoryStore } from '../store/inventoryStore'
 import { useShoppingStore } from '../store/shoppingStore'
 import { useMealToTryStore } from '../store/mealToTryStore'
+import { useRecipeBlogStore } from '../store/recipeBlogStore'
 import { MealForm } from '../components/MealForm'
 import { MealToTryForm } from '../components/MealToTryForm'
 import type { Ingredient, Meal, MealPlanDay, MealSlot, MealToTry } from '../types'
@@ -500,14 +501,19 @@ export function MealsPage({ onNavigateToShopping }: Props) {
 
       {/* ── Meals to try ─────────────────────────────────────────── */}
       {subTab === 'to-try' && (
-        <MealsToTrySection
-          mealsToTry={mealsToTry}
-          ingredientMap={ingredientMap}
-          onAdd={() => { setEditToTry(undefined); setShowToTryForm(true) }}
-          onEdit={(m) => { setEditToTry(m); setShowToTryForm(true) }}
-          onDelete={deleteMealToTry}
-          onMarkTried={(m) => setConvertToTry(m)}
-        />
+        <div className="flex gap-6 items-start">
+          <div className="flex-1 min-w-0">
+            <MealsToTrySection
+              mealsToTry={mealsToTry}
+              ingredientMap={ingredientMap}
+              onAdd={() => { setEditToTry(undefined); setShowToTryForm(true) }}
+              onEdit={(m) => { setEditToTry(m); setShowToTryForm(true) }}
+              onDelete={deleteMealToTry}
+              onMarkTried={(m) => setConvertToTry(m)}
+            />
+          </div>
+          <RecipeBlogPanel />
+        </div>
       )}
 
       {/* Meal form modal */}
@@ -537,7 +543,7 @@ export function MealsPage({ onNavigateToShopping }: Props) {
       {/* Convert meal-to-try → real meal (pre-filled MealForm) */}
       {convertToTry && (
         <MealForm
-          meal={{ name: convertToTry.title, ingredients: convertToTry.ingredients, notes: convertToTry.notes, cookingTime: convertToTry.cookingTime, isVegetarian: convertToTry.isVegetarian, createdAt: new Date() }}
+          meal={{ name: convertToTry.title, url: convertToTry.url, ingredients: convertToTry.ingredients, notes: convertToTry.notes, cookingTime: convertToTry.cookingTime, isVegetarian: convertToTry.isVegetarian, createdAt: new Date() }}
           onSave={async (data) => {
             await addMeal(data)
             await markTried(convertToTry.id!)
@@ -634,6 +640,11 @@ function MealCard({ meal, ingredientMap, onEdit, onDelete }: {
           <span className={`badge badge-sm mt-1 ${COOKING_TIME_BADGE[meal.cookingTime]}`}>
             {COOKING_TIME_LABELS[meal.cookingTime]}
           </span>
+        )}
+        {meal.url && (
+          <a href={meal.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-secondary hover:text-secondary/70 mt-1 truncate">
+            <Link size={11} /> <span className="truncate">{new URL(meal.url).hostname.replace('www.', '')}</span>
+          </a>
         )}
         {meal.notes && <p className="text-sm text-base-content/60 line-clamp-2 mt-1">{meal.notes}</p>}
         {meal.ingredients.length > 0 ? (
@@ -1254,6 +1265,103 @@ function TryMealPickerModal({ mealsToTry, plannedIds, onAdd, onClose }: {
       </div>
       <div className="modal-backdrop" onClick={onClose} />
     </dialog>
+  )
+}
+
+// ── Recipe blogs side panel ──────────────────────────────────────────────────
+
+function RecipeBlogPanel() {
+  const { blogs, addBlog, removeBlog, updateBlog } = useRecipeBlogStore()
+  const [showAdd, setShowAdd] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newUrl, setNewUrl] = useState('')
+  const [newNotes, setNewNotes] = useState('')
+  const [editId, setEditId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editUrl, setEditUrl] = useState('')
+  const [editNotes, setEditNotes] = useState('')
+
+  function handleAdd(ev: React.FormEvent) {
+    ev.preventDefault()
+    if (!newName.trim() || !newUrl.trim()) return
+    addBlog(newName.trim(), newUrl.trim(), newNotes.trim() || undefined)
+    setNewName(''); setNewUrl(''); setNewNotes(''); setShowAdd(false)
+  }
+
+  function startEdit(b: ReturnType<typeof useRecipeBlogStore.getState>['blogs'][0]) {
+    setEditId(b.id); setEditName(b.name); setEditUrl(b.url); setEditNotes(b.notes ?? '')
+  }
+
+  function handleEditSave(ev: React.FormEvent) {
+    ev.preventDefault()
+    if (!editId) return
+    updateBlog(editId, { name: editName.trim(), url: editUrl.trim(), notes: editNotes.trim() || undefined })
+    setEditId(null)
+  }
+
+  return (
+    <aside className="w-64 flex-shrink-0 hidden lg:block">
+      <div className="sticky top-4 rounded-xl border border-accent/20 bg-base-100 shadow-sm overflow-hidden">
+        <div className="bg-accent/10 px-4 py-3 flex items-center justify-between border-b border-accent/20">
+          <div className="flex items-center gap-2">
+            <Link size={16} className="text-accent" weight="fill" />
+            <span className="font-bold text-sm text-accent">Recipe blogs</span>
+          </div>
+          <button className="btn btn-ghost btn-xs" onClick={() => { setShowAdd(v => !v); setEditId(null) }}>
+            <Plus size={14} weight="bold" />
+          </button>
+        </div>
+
+        {showAdd && (
+          <form onSubmit={handleAdd} className="px-3 py-3 border-b border-base-200 flex flex-col gap-2 bg-base-50">
+            <input className="input input-bordered input-xs w-full" placeholder="Site name (e.g. Ottolenghi)" value={newName} onChange={e => setNewName(e.target.value)} autoFocus required />
+            <input className="input input-bordered input-xs w-full" type="url" placeholder="https://..." value={newUrl} onChange={e => setNewUrl(e.target.value)} required />
+            <input className="input input-bordered input-xs w-full" placeholder="Notes (optional)" value={newNotes} onChange={e => setNewNotes(e.target.value)} />
+            <div className="flex gap-1 justify-end">
+              <button type="button" className="btn btn-ghost btn-xs" onClick={() => setShowAdd(false)}>Cancel</button>
+              <button type="submit" className="btn btn-accent btn-xs">Add</button>
+            </div>
+          </form>
+        )}
+
+        {blogs.length === 0 && !showAdd ? (
+          <p className="text-xs text-base-content/40 text-center px-4 py-6">Save your favourite recipe blogs and sites here</p>
+        ) : (
+          <ul className="divide-y divide-base-200">
+            {blogs.map(b => (
+              <li key={b.id} className="px-3 py-2.5">
+                {editId === b.id ? (
+                  <form onSubmit={handleEditSave} className="flex flex-col gap-1.5">
+                    <input className="input input-bordered input-xs w-full" value={editName} onChange={e => setEditName(e.target.value)} required />
+                    <input className="input input-bordered input-xs w-full" type="url" value={editUrl} onChange={e => setEditUrl(e.target.value)} required />
+                    <input className="input input-bordered input-xs w-full" placeholder="Notes" value={editNotes} onChange={e => setEditNotes(e.target.value)} />
+                    <div className="flex gap-1 justify-end">
+                      <button type="button" className="btn btn-ghost btn-xs" onClick={() => setEditId(null)}>Cancel</button>
+                      <button type="submit" className="btn btn-accent btn-xs">Save</button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="flex items-start gap-1.5 group">
+                    <div className="flex-1 min-w-0">
+                      <a href={b.url} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-secondary hover:text-secondary/70 flex items-center gap-1 min-w-0">
+                        <ArrowSquareOut size={12} className="flex-shrink-0" />
+                        <span className="truncate">{b.name}</span>
+                      </a>
+                      <p className="text-[10px] text-base-content/40 truncate">{b.url.replace(/^https?:\/\/(www\.)?/, '')}</p>
+                      {b.notes && <p className="text-[11px] text-base-content/55 mt-0.5 line-clamp-2">{b.notes}</p>}
+                    </div>
+                    <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                      <button className="btn btn-ghost btn-xs p-0 h-5 w-5 min-h-0" onClick={() => startEdit(b)}><PencilSimple size={11} /></button>
+                      <button className="btn btn-ghost btn-xs p-0 h-5 w-5 min-h-0 text-error opacity-70" onClick={() => removeBlog(b.id)}><Trash size={11} /></button>
+                    </div>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </aside>
   )
 }
 
