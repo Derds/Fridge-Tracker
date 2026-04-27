@@ -695,6 +695,13 @@ function MealCard({ meal, ingredientMap, onEdit, onDelete }: {
             {COOKING_TIME_LABELS[meal.cookingTime]}
           </span>
         )}
+        {meal.suitableFor && meal.suitableFor.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {meal.suitableFor.map(s => (
+              <span key={s} className="badge badge-outline badge-xs text-base-content/50">{MEAL_SLOT_LABELS[s]}</span>
+            ))}
+          </div>
+        )}
         {meal.url && (
           <a href={meal.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-secondary hover:text-secondary/70 mt-1 truncate">
             <Link size={11} /> <span className="truncate">{new URL(meal.url).hostname.replace('www.', '')}</span>
@@ -853,14 +860,19 @@ function AddMealToDayModal({ meals, slot, plannedMealIds, onAdd, onClose }: {
   const [search, setSearch] = useState('')
   const [timeFilter, setTimeFilter] = useState<string>('all')
   const [veggieOnly, setVeggieOnly] = useState(false)
+  const [showAll, setShowAll] = useState(false)
   const planned = new Set(plannedMealIds)
-  const filtered = meals.filter(m => {
+
+  // Split into slot-relevant and others
+  const base = meals.filter(m => {
     if (planned.has(m.id!)) return false
     if (search && !m.name.toLowerCase().includes(search.toLowerCase())) return false
     if (timeFilter !== 'all' && m.cookingTime !== timeFilter) return false
     if (veggieOnly && !m.isVegetarian) return false
     return true
   })
+  const relevant = base.filter(m => !m.suitableFor?.length || m.suitableFor.includes(slot))
+  const others = base.filter(m => m.suitableFor?.length && !m.suitableFor.includes(slot))
 
   const timeOptions = [
     { value: 'all', label: 'Any time' },
@@ -900,16 +912,41 @@ function AddMealToDayModal({ meals, slot, plannedMealIds, onAdd, onClose }: {
             🌿 Veggie
           </label>
         </div>
-        {filtered.length === 0 ? (
+        {base.length === 0 ? (
           <p className="text-sm text-base-content/40 py-4 text-center">
             {meals.length === 0 ? 'No meals saved — create some in the Meals tab first' : 'No meals match these filters'}
           </p>
         ) : (
           <ul className="flex flex-col gap-1 max-h-60 overflow-y-auto">
-            {filtered.map(meal => (
+            {relevant.map(meal => (
               <li key={meal.id}>
                 <button
                   className="w-full text-left px-3 py-2 rounded-lg hover:bg-base-200 text-sm flex items-center justify-between gap-2"
+                  onClick={() => onAdd(meal.id!)}
+                >
+                  <span className="flex items-center gap-1 min-w-0">
+                    {meal.isVegetarian && <span>🌿</span>}
+                    <span className="truncate">{meal.name}</span>
+                  </span>
+                  {meal.cookingTime && (
+                    <span className={`badge badge-xs flex-shrink-0 ${COOKING_TIME_BADGE[meal.cookingTime]}`}>
+                      {COOKING_TIME_LABELS[meal.cookingTime]}
+                    </span>
+                  )}
+                </button>
+              </li>
+            ))}
+            {others.length > 0 && !showAll && (
+              <li>
+                <button className="w-full text-center text-xs text-base-content/40 py-1.5 hover:text-base-content/70" onClick={() => setShowAll(true)}>
+                  + {others.length} more (not tagged for {MEAL_SLOT_LABELS[slot]})
+                </button>
+              </li>
+            )}
+            {showAll && others.map(meal => (
+              <li key={meal.id}>
+                <button
+                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-base-200 text-sm flex items-center justify-between gap-2 opacity-60"
                   onClick={() => onAdd(meal.id!)}
                 >
                   <span className="flex items-center gap-1 min-w-0">
@@ -1347,6 +1384,29 @@ function MealTrackerView({
   const weekDays = getTrackerWeekDays(trackerWeekStart)
   const [replaceFor, setReplaceFor] = useState<{ date: string; slot: MealSlot } | null>(null)
   const importRef = React.useRef<HTMLInputElement>(null)
+  const today = new Date().toISOString().slice(0, 10)
+
+  // Default breakfast — stored in localStorage
+  type DefaultBreakfast = { mealId?: number; name?: string }
+  const [defaultBreakfast, setDefaultBreakfastState] = useState<DefaultBreakfast>(() => {
+    try { return JSON.parse(localStorage.getItem('tracker-default-breakfast') ?? 'null') ?? {} } catch { return {} }
+  })
+  const [showBreakfastSettings, setShowBreakfastSettings] = useState(false)
+  const [bkfstSearch, setBkfstSearch] = useState('')
+  const [bkfstFreeText, setBkfstFreeText] = useState(defaultBreakfast.name ?? '')
+
+  function saveDefaultBreakfast(val: DefaultBreakfast) {
+    localStorage.setItem('tracker-default-breakfast', JSON.stringify(val))
+    setDefaultBreakfastState(val)
+  }
+
+  const defaultBreakfastName = defaultBreakfast.mealId
+    ? (mealMap.get(defaultBreakfast.mealId)?.name ?? null)
+    : (defaultBreakfast.name ?? null)
+
+  // Meals suitable for breakfast (or with no suitableFor set)
+  const breakfastMeals = meals.filter(m => !m.suitableFor?.length || m.suitableFor.includes('breakfast'))
+  const bkfstResults = breakfastMeals.filter(m => bkfstSearch && m.name.toLowerCase().includes(bkfstSearch.toLowerCase())).slice(0, 6)
 
   const weekLabel = (() => {
     const [y, m, d] = trackerWeekStart.split('-').map(Number)
@@ -1437,15 +1497,78 @@ function MealTrackerView({
         </div>
       ) : (
         <>
+          {/* Default breakfast settings bar */}
+          <div className="mb-4 rounded-lg border border-base-200 bg-base-100">
+            <button
+              className="w-full flex items-center justify-between px-4 py-2.5 text-sm hover:bg-base-200 rounded-lg transition-colors"
+              onClick={() => setShowBreakfastSettings(v => !v)}
+            >
+              <span className="flex items-center gap-2 font-medium text-base-content/70">
+                <span>🥣</span> Default breakfast
+                {defaultBreakfastName
+                  ? <span className="text-primary font-semibold ml-1">{defaultBreakfastName}</span>
+                  : <span className="text-base-content/40 font-normal">not set — breakfast slots will be blank</span>
+                }
+              </span>
+              <span className="text-base-content/30 text-xs">{showBreakfastSettings ? '▲' : '▼'}</span>
+            </button>
+
+            {showBreakfastSettings && (
+              <div className="px-4 pb-4 border-t border-base-200 pt-3">
+                <p className="text-xs text-base-content/50 mb-3">Choose a default meal that will pre-fill all breakfast slots with no meal assigned. You can still edit individual days.</p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-base-content/50 mb-1.5">Search your meals</p>
+                    <input
+                      className="input input-bordered input-sm w-full mb-1.5"
+                      placeholder="Search meals…"
+                      value={bkfstSearch}
+                      onChange={e => setBkfstSearch(e.target.value)}
+                    />
+                    {bkfstResults.length > 0 && (
+                      <ul className="border border-base-300 rounded-lg overflow-hidden">
+                        {bkfstResults.map(m => (
+                          <li key={m.id}>
+                            <button className="w-full text-left px-3 py-1.5 hover:bg-base-200 text-sm" onClick={() => { saveDefaultBreakfast({ mealId: m.id }); setBkfstSearch(''); setShowBreakfastSettings(false) }}>
+                              {m.name}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-base-content/50 mb-1.5">Or set free text</p>
+                    <div className="flex gap-1.5">
+                      <input
+                        className="input input-bordered input-sm flex-1"
+                        placeholder="e.g. Porridge, Toast…"
+                        value={bkfstFreeText}
+                        onChange={e => setBkfstFreeText(e.target.value)}
+                      />
+                      <button className="btn btn-secondary btn-sm" disabled={!bkfstFreeText.trim()} onClick={() => { saveDefaultBreakfast({ name: bkfstFreeText.trim() }); setShowBreakfastSettings(false) }}>Set</button>
+                    </div>
+                  </div>
+                </div>
+                {defaultBreakfastName && (
+                  <button className="btn btn-ghost btn-xs text-error mt-3" onClick={() => { saveDefaultBreakfast({}); setShowBreakfastSettings(false) }}>
+                    <X size={12} /> Clear default
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Tracker grid */}
           <div className="overflow-x-auto">
             <div className="grid gap-2 min-w-[700px]" style={{ gridTemplateColumns: '80px repeat(7, 1fr)' }}>
               {/* Header row */}
               <div />
               {weekDays.map((date, i) => (
-                <div key={date} className="text-center py-1">
+                <div key={date} className={`text-center py-1 rounded ${date === today ? 'bg-primary/10' : ''}`}>
                   <p className="text-xs font-bold text-base-content/50 uppercase">{DAY_ABBREV[i]}</p>
                   <p className="text-sm font-bold">{date.split('-')[2]}</p>
+                  {date === today && <p className="text-[9px] text-primary font-semibold uppercase tracking-wide">Today</p>}
                 </div>
               ))}
 
@@ -1458,27 +1581,47 @@ function MealTrackerView({
                   {weekDays.map(date => {
                     const trackedDay = tracker.days.find(d => d.date === date)
                     const s = trackedDay?.slots[slot]
+                    const isPast = date < today
+                    const hasContent = s?.plannedMealId || s?.actualMealId || s?.actualMealName || s?.skipped || s?.eatingOut
+                    const isAssumedSkipped = isPast && !hasContent
+
+                    // Resolve display: actual > planned > default breakfast
                     const displayMeal = s?.actualMealId ? mealMap.get(s.actualMealId) : s?.plannedMealId ? mealMap.get(s.plannedMealId) : null
-                    const displayName = s?.actualMealName ?? displayMeal?.name
+                    const defaultBkfstMeal = slot === 'breakfast' ? (defaultBreakfast.mealId ? mealMap.get(defaultBreakfast.mealId) : null) : null
+                    const defaultBkfstName = slot === 'breakfast' ? (defaultBkfstMeal?.name ?? defaultBreakfast.name ?? null) : null
+                    const displayName = s?.actualMealName ?? displayMeal?.name ?? defaultBkfstName
                     const isActualDiff = s?.actualMealId != null || s?.actualMealName != null
+                    const isDefault = !s?.actualMealId && !s?.actualMealName && !displayMeal && !!defaultBkfstName
+
                     return (
-                      <div key={date} className={`rounded-lg border p-1.5 min-h-[64px] flex flex-col gap-0.5 transition-all ${s?.skipped ? 'bg-base-200 border-base-300 opacity-50' : s?.eatingOut ? 'bg-secondary/5 border-secondary/20' : 'bg-base-100 border-base-200 hover:border-base-300'}`}>
-                        {displayName && !s?.skipped && !s?.eatingOut && (
-                          <p className={`text-[10px] leading-tight font-medium truncate ${isActualDiff ? 'text-accent' : 'text-primary'}`} title={displayName}>
-                            {displayName}
-                          </p>
-                        )}
-                        {s?.eatingOut && !s?.skipped && (
-                          <p className="text-[10px] text-secondary flex items-center gap-0.5"><ForkKnife size={9} weight="fill" /> Ate out</p>
-                        )}
-                        {s?.skipped && (
-                          <p className="text-[10px] text-base-content/40 flex items-center gap-0.5"><Prohibit size={9} /> Skipped</p>
+                      <div key={date} className={`rounded-lg border p-1.5 min-h-[64px] flex flex-col gap-0.5 transition-all
+                        ${s?.skipped || isAssumedSkipped
+                          ? isAssumedSkipped ? 'bg-base-200/50 border-base-200 opacity-40' : 'bg-base-200 border-base-300 opacity-50'
+                          : s?.eatingOut ? 'bg-secondary/5 border-secondary/20'
+                          : isDefault ? 'bg-base-100 border-primary/20'
+                          : 'bg-base-100 border-base-200 hover:border-base-300'}`}>
+                        {isAssumedSkipped ? (
+                          <p className="text-[9px] text-base-content/30 italic">assumed skipped</p>
+                        ) : (
+                          <>
+                            {displayName && !s?.skipped && !s?.eatingOut && (
+                              <p className={`text-[10px] leading-tight font-medium truncate ${isActualDiff ? 'text-accent' : isDefault ? 'text-base-content/40 italic' : 'text-primary'}`} title={displayName}>
+                                {displayName}{isDefault && ' *'}
+                              </p>
+                            )}
+                            {s?.eatingOut && !s?.skipped && (
+                              <p className="text-[10px] text-secondary flex items-center gap-0.5"><ForkKnife size={9} weight="fill" /> Ate out</p>
+                            )}
+                            {s?.skipped && (
+                              <p className="text-[10px] text-base-content/40 flex items-center gap-0.5"><Prohibit size={9} /> Skipped</p>
+                            )}
+                          </>
                         )}
                         {/* Action buttons */}
                         <div className="flex gap-0.5 mt-auto pt-0.5 flex-wrap">
                           <button
-                            title={s?.skipped ? 'Undo skip' : 'Mark skipped'}
-                            className={`btn btn-xs p-0 w-5 h-5 min-h-0 ${s?.skipped ? 'btn-error btn-outline' : 'btn-ghost opacity-30 hover:opacity-70'}`}
+                            title={s?.skipped ? 'Undo skip' : isAssumedSkipped ? 'Mark as not skipped' : 'Mark skipped'}
+                            className={`btn btn-xs p-0 w-5 h-5 min-h-0 ${s?.skipped ? 'btn-error btn-outline' : isAssumedSkipped ? 'btn-error btn-ghost opacity-40 hover:opacity-70' : 'btn-ghost opacity-30 hover:opacity-70'}`}
                             onClick={() => onUpdateSlot(date, slot, { skipped: !s?.skipped, eatingOut: false })}
                           >
                             <Prohibit size={9} />
@@ -1505,6 +1648,7 @@ function MealTrackerView({
               ))}
             </div>
           </div>
+          {defaultBreakfastName && <p className="text-xs text-base-content/35 mt-1.5">* Default breakfast ({defaultBreakfastName})</p>}
 
           {/* Replace/actual meal modal */}
           {replaceFor && (
@@ -1520,7 +1664,7 @@ function MealTrackerView({
           )}
 
           {/* Feedback panel */}
-          <TrackerFeedback tracker={tracker} mealMap={mealMap} ingredientMap={ingredientMap} />
+          <TrackerFeedback tracker={tracker} mealMap={mealMap} ingredientMap={ingredientMap} today={today} />
         </>
       )}
     </div>
@@ -1615,10 +1759,11 @@ function ReplaceMealModal({ date, slot, current, meals, mealMap, onSave, onClose
   )
 }
 
-function TrackerFeedback({ tracker, mealMap, ingredientMap }: {
+function TrackerFeedback({ tracker, mealMap, ingredientMap, today }: {
   tracker: NonNullable<ReturnType<typeof useMealTrackerStore.getState>['tracker']>
   mealMap: Map<number, Meal>
   ingredientMap: Map<number, Ingredient>
+  today: string
 }) {
   const warnings: string[] = []
   const positives: string[] = []
@@ -1632,16 +1777,20 @@ function TrackerFeedback({ tracker, mealMap, ingredientMap }: {
 
   for (const day of tracker.days) {
     let dayHasProtein = false, dayHasFibre = false, dayHasVeg = false, dayHasGreens = false
+    const isPast = day.date < today
 
     for (const slot of MEAL_SLOTS) {
       const s = day.slots[slot]
-      if (!s) continue
+      const hasContent = s?.plannedMealId || s?.actualMealId || s?.actualMealName || s?.skipped || s?.eatingOut
+      const isAssumedSkipped = isPast && !hasContent
+
+      if (!s && !isAssumedSkipped) continue
       totalSlots++
-      if (s.skipped) { skipped++; if (slot === 'breakfast') skippedBreakfasts++; continue }
-      if (s.eatingOut) { eatingOut++; continue }
+      if (s?.skipped || isAssumedSkipped) { skipped++; if (slot === 'breakfast') skippedBreakfasts++; continue }
+      if (s?.eatingOut) { eatingOut++; continue }
       tracked++
 
-      const mealId = s.actualMealId ?? s.plannedMealId
+      const mealId = s?.actualMealId ?? s?.plannedMealId
       if (!mealId) continue
       const meal = mealMap.get(mealId)
       if (!meal) continue

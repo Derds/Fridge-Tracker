@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
-import type { Meal, CookingTime, IngredientRole } from '../types'
-import { COOKING_TIME_LABELS, INGREDIENT_ROLE_LABELS, INGREDIENT_ROLE_BADGE } from '../types'
+import type { Meal, CookingTime, IngredientRole, MealSlot } from '../types'
+import { COOKING_TIME_LABELS, INGREDIENT_ROLE_LABELS, INGREDIENT_ROLE_BADGE, MEAL_SLOTS, MEAL_SLOT_LABELS } from '../types'
 import { useIngredientStore } from '../store/ingredientStore'
 import { MagnifyingGlass, X, Link } from '@phosphor-icons/react'
 
@@ -23,6 +23,7 @@ export function MealForm({ meal, onSave, onClose }: Props) {
   const [notes, setNotes] = useState(meal?.notes ?? '')
   const [cookingTime, setCookingTime] = useState<CookingTime>(meal?.cookingTime ?? 'medium')
   const [isVegetarian, setIsVegetarian] = useState(meal?.isVegetarian ?? false)
+  const [suitableFor, setSuitableFor] = useState<MealSlot[]>(meal?.suitableFor ?? [])
   const [search, setSearch] = useState('')
   const [entries, setEntries] = useState<IngredientEntry[]>(
     meal?.ingredients.map(e => ({ ...e, role: e.role ?? 'core' })) ?? []
@@ -67,7 +68,7 @@ export function MealForm({ meal, onSave, onClose }: Props) {
     if (!name.trim()) { setError('Name is required'); return }
     setSaving(true)
     try {
-      await onSave({ name: name.trim(), url: url.trim() || undefined, notes: notes.trim() || undefined, cookingTime, isVegetarian, ingredients: entries })
+      await onSave({ name: name.trim(), url: url.trim() || undefined, notes: notes.trim() || undefined, cookingTime, isVegetarian, suitableFor: suitableFor.length > 0 ? suitableFor : undefined, ingredients: entries })
       onClose()
     } catch {
       setError('Something went wrong — please try again')
@@ -132,6 +133,28 @@ export function MealForm({ meal, onSave, onClose }: Props) {
               />
               <span className="label-text font-medium">🌿 Vegetarian</span>
             </label>
+          </div>
+
+          <div className="form-control">
+            <label className="label pb-1.5">
+              <span className="label-text font-medium">Suitable for <span className="text-base-content/50 font-normal">(leave blank for all meals)</span></span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {MEAL_SLOTS.map(slot => {
+                const checked = suitableFor.includes(slot)
+                return (
+                  <label key={slot} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer select-none transition-colors ${checked ? 'bg-primary/10 border-primary text-primary' : 'border-base-300 text-base-content/60 hover:border-base-400'}`}>
+                    <input
+                      type="checkbox"
+                      className="checkbox checkbox-xs checkbox-primary"
+                      checked={checked}
+                      onChange={e => setSuitableFor(e.target.checked ? [...suitableFor, slot] : suitableFor.filter(s => s !== slot))}
+                    />
+                    <span className="text-sm font-medium">{MEAL_SLOT_LABELS[slot]}</span>
+                  </label>
+                )
+              })}
+            </div>
           </div>
 
           <div className="form-control">

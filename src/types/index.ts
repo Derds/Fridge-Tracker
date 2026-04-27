@@ -109,6 +109,8 @@ export interface Meal {
   notes?: string
   cookingTime?: CookingTime
   isVegetarian?: boolean
+  /** Which meal slots this is suitable for. If empty/undefined → suitable for all. */
+  suitableFor?: MealSlot[]
   createdAt: Date
 }
 
