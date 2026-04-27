@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { CatalogPage } from './pages/CatalogPage'
 import { InventoryPage } from './pages/InventoryPage'
 import { ShoppingPage } from './pages/ShoppingPage'
+import { MealsPage } from './pages/MealsPage'
 
 type Page = 'catalog' | 'inventory' | 'shopping' | 'meals'
 
@@ -11,15 +12,6 @@ const NAV: Array<{ id: Page; label: string; icon: string }> = [
   { id: 'shopping', label: 'Shopping', icon: '🛒' },
   { id: 'meals', label: 'Meals', icon: '🍽️' },
 ]
-
-function ComingSoon({ label }: { label: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] text-base-content/40">
-      <p className="text-5xl mb-4">🚧</p>
-      <p className="text-lg font-medium">{label} — coming soon</p>
-    </div>
-  )
-}
 
 function App() {
   const [page, setPage] = useState<Page>('catalog')
@@ -49,7 +41,7 @@ function App() {
         {page === 'catalog' && <CatalogPage />}
         {page === 'inventory' && <InventoryPage />}
         {page === 'shopping' && <ShoppingPage />}
-        {page === 'meals' && <ComingSoon label="Meal planning" />}
+        {page === 'meals' && <MealsPage onNavigateToShopping={() => setPage('shopping')} />}
       </main>
 
       {/* Bottom tab bar — mobile only */}
