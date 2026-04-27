@@ -111,14 +111,30 @@ export interface Meal {
   createdAt: Date
 }
 
+export interface MealToTry {
+  id?: number
+  title: string
+  url?: string
+  notes?: string
+  cookingTime?: CookingTime
+  isVegetarian?: boolean
+  ingredients: Array<{ ingredientId: number; servings: number; role?: IngredientRole }>
+  tried: boolean
+  createdAt: Date
+}
+
 export interface MealPlanDay {
   date: string  // ISO date string YYYY-MM-DD
   slots: Record<MealSlot, number[]>
   ingredientIds: number[]
-  snackIngredientIds?: number[]   // single ingredients added to snack slot
-  eatingOut?: boolean             // mark day as eating out
+  snackIngredientIds?: number[]                       // single ingredients added to snack slot
+  eatingOutSlots?: Partial<Record<MealSlot, boolean>> // per-slot eating out
+  highEnergy?: boolean                                // mark day as high energy
+  tryMealSlots?: Partial<Record<MealSlot, number[]>>  // mealToTry IDs per slot
   /** @deprecated kept for migration of old data */
   mealIds?: number[]
+  /** @deprecated use eatingOutSlots */
+  eatingOut?: boolean
 }
 
 export interface MealPlan {

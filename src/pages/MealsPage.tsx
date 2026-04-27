@@ -16,14 +16,16 @@ import { useWeekPlannerStore, getWeekDays, formatWeekLabel, formatDayLabel, getM
 import { useIngredientStore } from '../store/ingredientStore'
 import { useInventoryStore } from '../store/inventoryStore'
 import { useShoppingStore } from '../store/shoppingStore'
+import { useMealToTryStore } from '../store/mealToTryStore'
 import { MealForm } from '../components/MealForm'
-import type { Ingredient, Meal, MealPlanDay, MealSlot } from '../types'
+import { MealToTryForm } from '../components/MealToTryForm'
+import type { Ingredient, Meal, MealPlanDay, MealSlot, MealToTry } from '../types'
 import {
   MEAL_SLOTS, MEAL_SLOT_LABELS,
   COOKING_TIME_LABELS, COOKING_TIME_BADGE,
   INGREDIENT_ROLE_BADGE_DISPLAY,
 } from '../types'
-import { ForkKnife, Plus, PencilSimple, Trash, X, ArrowLeft, ArrowRight, ShoppingCart, ChartBar, ArrowSquareOut, UploadSimple } from '@phosphor-icons/react'
+import { ForkKnife, Plus, PencilSimple, Trash, X, ArrowLeft, ArrowRight, ShoppingCart, ChartBar, ArrowSquareOut, UploadSimple, Sparkle, Lightning, Link, CheckCircle } from '@phosphor-icons/react'
 import { CATEGORY_ICONS } from '../components/CatalogFilters'
 import { CATEGORY_LABELS, CATEGORY_ORDER } from '../store/ingredientStore'
 
@@ -70,22 +72,28 @@ interface Props {
 }
 
 export function MealsPage({ onNavigateToShopping }: Props) {
-  const [subTab, setSubTab] = useState<'gallery' | 'planner'>('planner')
+  const [subTab, setSubTab] = useState<'gallery' | 'planner' | 'to-try'>('planner')
   const [showForm, setShowForm] = useState(false)
   const [editMeal, setEditMeal] = useState<Meal | undefined>()
   const [activeMeal, setActiveMeal] = useState<Meal | null>(null)
   const [addMealForSlot, setAddMealForSlot] = useState<{ date: string; slot: MealSlot } | null>(null)
   const [addSnackIngForDate, setAddSnackIngForDate] = useState<string | null>(null)
+  const [tryPickerFor, setTryPickerFor] = useState<{ date: string; slot: MealSlot } | null>(null)
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [reviewItems, setReviewItems] = useState<{ ingredient: Ingredient; isCore: boolean }[] | null>(null)
   const [showNutrition, setShowNutrition] = useState(false)
   const [importMsg, setImportMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  // Meals to try state
+  const [showToTryForm, setShowToTryForm] = useState(false)
+  const [editToTry, setEditToTry] = useState<MealToTry | undefined>()
+  const [convertToTry, setConvertToTry] = useState<MealToTry | undefined>()
 
   const { meals, loadMeals, addMeal, updateMeal, deleteMeal } = useMealStore()
-  const { plan, weekStart, loading: planLoading, loadWeek, addMealToDay, removeMealFromDay, toggleEatingOut, addSnackIngredient, removeSnackIngredient } = useWeekPlannerStore()
+  const { plan, weekStart, loading: planLoading, loadWeek, addMealToDay, removeMealFromDay, toggleSlotEatingOut, toggleHighEnergy, addSnackIngredient, removeSnackIngredient, addTryMealToSlot, removeTryMealFromSlot } = useWeekPlannerStore()
   const { ingredients, loadIngredients } = useIngredientStore()
   const { items: inventory, loadInventory } = useInventoryStore()
   const { loadOrCreateList, bulkAddToActual } = useShoppingStore()
+  const { mealsToTry, loadMealsToTry, addMealToTry, updateMealToTry, deleteMealToTry, markTried } = useMealToTryStore()
 
   const weekDays = useMemo(() => getWeekDays(weekStart), [weekStart])
 
@@ -95,7 +103,8 @@ export function MealsPage({ onNavigateToShopping }: Props) {
     loadWeek()
     loadOrCreateList()
     loadInventory()
-  }, [loadMeals, loadIngredients, loadWeek, loadOrCreateList, loadInventory])
+    loadMealsToTry()
+  }, [loadMeals, loadIngredients, loadWeek, loadOrCreateList, loadInventory, loadMealsToTry])
 
   useEffect(() => {
     if (!selectedDay && weekDays.length) {
@@ -205,7 +214,7 @@ export function MealsPage({ onNavigateToShopping }: Props) {
   return (
     <div className="px-4 py-6 max-w-7xl mx-auto">
       {/* Sub-tab toggle */}
-      <div className="join mb-6">
+      <div className="join mb-6 flex-wrap">
         <button
           className={`btn join-item ${subTab === 'gallery' ? 'btn-primary' : 'btn-ghost border border-base-300'}`}
           onClick={() => setSubTab('gallery')}
@@ -217,6 +226,13 @@ export function MealsPage({ onNavigateToShopping }: Props) {
           onClick={() => setSubTab('planner')}
         >
           Week plan {plannedCount > 0 && <span className="badge badge-sm ml-1.5">{plannedCount}</span>}
+        </button>
+        <button
+          className={`btn join-item gap-1.5 ${subTab === 'to-try' ? 'btn-accent' : 'btn-ghost border border-base-300'}`}
+          onClick={() => setSubTab('to-try')}
+        >
+          <Sparkle size={14} weight={subTab === 'to-try' ? 'fill' : 'regular'} />
+          Meals to try {mealsToTry.filter(m => !m.tried).length > 0 && <span className="badge badge-sm ml-0.5">{mealsToTry.filter(m => !m.tried).length}</span>}
         </button>
       </div>
 
@@ -328,10 +344,14 @@ export function MealsPage({ onNavigateToShopping }: Props) {
                           dayName={DAY_NAMES[i]}
                           mealMap={mealMap}
                           ingredientMap={ingredientMap}
+                          mealToTryMap={new Map(mealsToTry.map(m => [m.id!, m]))}
                           onRemoveMeal={(slot, mealId) => removeMealFromDay(date, slot, mealId)}
                           onClickAdd={(slot) => slot === 'snack' ? setAddSnackIngForDate(date) : setAddMealForSlot({ date, slot })}
-                          onToggleEatingOut={() => toggleEatingOut(date)}
+                          onToggleSlotEatingOut={(slot) => toggleSlotEatingOut(date, slot)}
+                          onToggleHighEnergy={() => toggleHighEnergy(date)}
                           onRemoveSnackIngredient={(ingId) => removeSnackIngredient(date, ingId)}
+                          onClickTry={(slot) => setTryPickerFor({ date, slot })}
+                          onRemoveTryMeal={(slot, id) => removeTryMealFromSlot(date, slot, id)}
                         />
                       )
                     })}
@@ -369,75 +389,81 @@ export function MealsPage({ onNavigateToShopping }: Props) {
 
                 {selectedDay && (() => {
                   const day = plan?.days.find(d => d.date === selectedDay) ?? { date: selectedDay, slots: { breakfast: [], lunch: [], dinner: [], snack: [] }, ingredientIds: [] }
+                  const mealToTryMap = new Map(mealsToTry.map(m => [m.id!, m]))
                   return (
                     <div>
                       <div className="flex items-center justify-between mb-4">
                         <p className="font-semibold text-sm">{formatDayLabel(selectedDay, 'full')}</p>
-                        <label className="flex items-center gap-1.5 cursor-pointer select-none text-xs text-base-content/60">
+                        <label className="flex items-center gap-1.5 cursor-pointer select-none text-xs text-warning">
                           <input
                             type="checkbox"
-                            className="checkbox checkbox-xs"
-                            checked={day.eatingOut ?? false}
-                            onChange={() => toggleEatingOut(selectedDay)}
+                            className="checkbox checkbox-xs checkbox-warning"
+                            checked={day.highEnergy ?? false}
+                            onChange={() => toggleHighEnergy(selectedDay)}
                           />
-                          Eating out
+                          <Lightning size={13} weight={day.highEnergy ? 'fill' : 'regular'} />
+                          High energy
                         </label>
                       </div>
-                      {day.eatingOut ? (
-                        <div className="py-8 text-center text-base-content/40">
-                          <p className="text-2xl mb-1">🍽️</p>
-                          <p className="text-sm">Eating out today</p>
-                        </div>
-                      ) : (
-                      <>
-                      {MEAL_SLOTS.map(slot => (
+                      {MEAL_SLOTS.map(slot => {
+                        const isEatingOut = day.eatingOutSlots?.[slot] ?? false
+                        const tryItems = (day.tryMealSlots?.[slot] ?? []).map(id => mealToTryMap.get(id)).filter(Boolean) as MealToTry[]
+                        return (
                         <div key={slot} className="mb-4">
-                          <p className="text-xs font-semibold text-base-content/50 uppercase tracking-wide mb-1.5">
-                            {MEAL_SLOT_LABELS[slot]}
-                          </p>
-                          {day.slots[slot].length === 0 && (slot !== 'snack' || !(day.snackIngredientIds?.length)) ? (
+                          <div className="flex items-center justify-between mb-1.5">
+                            <p className="text-xs font-semibold text-base-content/50 uppercase tracking-wide">
+                              {MEAL_SLOT_LABELS[slot]}
+                              {isEatingOut && <ForkKnife size={11} className="inline ml-1 text-secondary" weight="fill" />}
+                            </p>
+                            <button
+                              className={`btn btn-ghost btn-xs gap-0.5 text-xs ${isEatingOut ? 'text-secondary' : 'text-base-content/30'}`}
+                              onClick={() => toggleSlotEatingOut(selectedDay, slot)}
+                            >
+                              <ForkKnife size={11} /> {isEatingOut ? 'In' : 'Out'}
+                            </button>
+                          </div>
+                          {day.slots[slot].length === 0 && !tryItems.length && (slot !== 'snack' || !(day.snackIngredientIds?.length)) ? (
                             <p className="text-xs text-base-content/30 italic mb-1.5">Nothing planned</p>
                           ) : (
                             <div className="flex flex-col gap-1 mb-1.5">
                               {day.slots[slot].map(mealId => (
                                 <div key={mealId} className="flex items-center gap-2 bg-base-200 rounded-lg px-3 py-2">
                                   <span className="flex-1 text-sm font-medium">{mealMap.get(mealId)?.name ?? '—'}</span>
-                                  <button
-                                    className="btn btn-ghost btn-xs opacity-40 hover:opacity-100"
-                                    onClick={() => removeMealFromDay(selectedDay, slot, mealId)}
-                                  ><X size={12} /></button>
+                                  <button className="btn btn-ghost btn-xs opacity-40 hover:opacity-100" onClick={() => removeMealFromDay(selectedDay, slot, mealId)}><X size={12} /></button>
+                                </div>
+                              ))}
+                              {tryItems.map(m => (
+                                <div key={m.id} className="flex items-center gap-2 bg-accent/10 rounded-lg px-3 py-2">
+                                  <Sparkle size={12} className="text-accent flex-shrink-0" weight="fill" />
+                                  <span className="flex-1 text-sm font-medium">{m.title}</span>
+                                  <button className="btn btn-ghost btn-xs opacity-40 hover:opacity-100" onClick={() => removeTryMealFromSlot(selectedDay, slot, m.id!)}><X size={12} /></button>
                                 </div>
                               ))}
                               {slot === 'snack' && (day.snackIngredientIds ?? []).map(ingId => (
                                 <div key={ingId} className="flex items-center gap-2 bg-base-200/60 rounded-lg px-3 py-1.5">
                                   <span className="flex-1 text-sm">{ingredientMap.get(ingId)?.name ?? '—'}</span>
-                                  <button
-                                    className="btn btn-ghost btn-xs opacity-40 hover:opacity-100"
-                                    onClick={() => removeSnackIngredient(selectedDay, ingId)}
-                                  ><X size={12} /></button>
+                                  <button className="btn btn-ghost btn-xs opacity-40 hover:opacity-100" onClick={() => removeSnackIngredient(selectedDay, ingId)}><X size={12} /></button>
                                 </div>
                               ))}
                             </div>
                           )}
-                          {slot === 'snack' ? (
-                            <button
-                              className="btn btn-outline btn-xs w-full gap-1"
-                              onClick={() => setAddSnackIngForDate(selectedDay)}
-                            >
-                              <Plus size={12} /> Add snack
+                          <div className="flex gap-1">
+                            {slot === 'snack' ? (
+                              <button className="btn btn-outline btn-xs flex-1 gap-1" onClick={() => setAddSnackIngForDate(selectedDay)}>
+                                <Plus size={12} /> Add snack
+                              </button>
+                            ) : (
+                              <button className="btn btn-outline btn-xs flex-1 gap-1" onClick={() => setAddMealForSlot({ date: selectedDay, slot })}>
+                                <Plus size={12} /> Add meal
+                              </button>
+                            )}
+                            <button className="btn btn-outline btn-xs gap-1 text-accent border-accent/30" onClick={() => setTryPickerFor({ date: selectedDay, slot })}>
+                              <Sparkle size={12} /> Try
                             </button>
-                          ) : (
-                            <button
-                              className="btn btn-outline btn-xs w-full gap-1"
-                              onClick={() => setAddMealForSlot({ date: selectedDay, slot })}
-                            >
-                              <Plus size={12} /> Add to {MEAL_SLOT_LABELS[slot].toLowerCase()}
-                            </button>
-                          )}
+                          </div>
                         </div>
-                      ))}
-                      </>
-                      )}
+                        )
+                      })}
                     </div>
                   )
                 })()}
@@ -472,6 +498,18 @@ export function MealsPage({ onNavigateToShopping }: Props) {
         </div>
       )}
 
+      {/* ── Meals to try ─────────────────────────────────────────── */}
+      {subTab === 'to-try' && (
+        <MealsToTrySection
+          mealsToTry={mealsToTry}
+          ingredientMap={ingredientMap}
+          onAdd={() => { setEditToTry(undefined); setShowToTryForm(true) }}
+          onEdit={(m) => { setEditToTry(m); setShowToTryForm(true) }}
+          onDelete={deleteMealToTry}
+          onMarkTried={(m) => setConvertToTry(m)}
+        />
+      )}
+
       {/* Meal form modal */}
       {showForm && (
         <MealForm
@@ -481,6 +519,31 @@ export function MealsPage({ onNavigateToShopping }: Props) {
             else await addMeal(data)
           }}
           onClose={() => { setShowForm(false); setEditMeal(undefined) }}
+        />
+      )}
+
+      {/* Meal-to-try form modal */}
+      {showToTryForm && (
+        <MealToTryForm
+          item={editToTry}
+          onSave={async (data) => {
+            if (editToTry?.id != null) await updateMealToTry(editToTry.id, data)
+            else await addMealToTry({ ...data, tried: false })
+          }}
+          onClose={() => { setShowToTryForm(false); setEditToTry(undefined) }}
+        />
+      )}
+
+      {/* Convert meal-to-try → real meal (pre-filled MealForm) */}
+      {convertToTry && (
+        <MealForm
+          meal={{ name: convertToTry.title, ingredients: convertToTry.ingredients, notes: convertToTry.notes, cookingTime: convertToTry.cookingTime, isVegetarian: convertToTry.isVegetarian, createdAt: new Date() }}
+          onSave={async (data) => {
+            await addMeal(data)
+            await markTried(convertToTry.id!)
+            setConvertToTry(undefined)
+          }}
+          onClose={() => setConvertToTry(undefined)}
         />
       )}
 
@@ -514,6 +577,19 @@ export function MealsPage({ onNavigateToShopping }: Props) {
             setAddSnackIngForDate(null)
           }}
           onClose={() => setAddSnackIngForDate(null)}
+        />
+      )}
+
+      {/* Try-meal picker for planner slots */}
+      {tryPickerFor && (
+        <TryMealPickerModal
+          mealsToTry={mealsToTry}
+          plannedIds={plan?.days.find(d => d.date === tryPickerFor.date)?.tryMealSlots?.[tryPickerFor.slot] ?? []}
+          onAdd={async (id) => {
+            await addTryMealToSlot(tryPickerFor.date, tryPickerFor.slot, id)
+            setTryPickerFor(null)
+          }}
+          onClose={() => setTryPickerFor(null)}
         />
       )}
 
@@ -609,110 +685,94 @@ function DraggableMeal({ meal }: { meal: Meal }) {
   )
 }
 
-function DroppableSlot({ date, slot, mealIds, snackIngredientIds, mealMap, ingredientMap, onRemoveMeal, onClickAdd, onRemoveSnackIngredient }: {
-  date: string
-  slot: MealSlot
-  mealIds: number[]
-  snackIngredientIds?: number[]
-  mealMap: Map<number, Meal>
-  ingredientMap: Map<number, Ingredient>
-  onRemoveMeal: (mealId: number) => void
-  onClickAdd: () => void
-  onRemoveSnackIngredient?: (ingId: number) => void
+function DroppableSlot({ date, slot, mealIds, snackIngredientIds, tryMealIds, mealMap, ingredientMap, mealToTryMap, isEatingOut, onRemoveMeal, onClickAdd, onRemoveSnackIngredient, onClickTry, onRemoveTryMeal, onToggleEatingOut }: {
+  date: string; slot: MealSlot; mealIds: number[]; snackIngredientIds?: number[]; tryMealIds?: number[]
+  mealMap: Map<number, Meal>; ingredientMap: Map<number, Ingredient>; mealToTryMap: Map<number, MealToTry>
+  isEatingOut: boolean; onRemoveMeal: (id: number) => void; onClickAdd: () => void
+  onRemoveSnackIngredient?: (id: number) => void; onClickTry: () => void; onRemoveTryMeal: (id: number) => void; onToggleEatingOut: () => void
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `slot-${date}-${slot}` })
   const abbrev: Record<MealSlot, string> = { breakfast: 'Bkfst', lunch: 'Lunch', dinner: 'Dinner', snack: 'Snack' }
-
   return (
-    <div
-      ref={setNodeRef}
-      className={`flex flex-col p-1 min-h-[52px] transition-colors border-b border-base-200 last:border-b-0 ${isOver ? 'bg-primary/10' : ''}`}
-    >
-      <p className="text-[9px] text-base-content/30 font-semibold uppercase tracking-wide mb-0.5">{abbrev[slot]}</p>
+    <div ref={setNodeRef} className={`flex flex-col p-1 min-h-[52px] transition-colors border-b border-base-200 last:border-b-0 ${isOver ? 'bg-primary/10' : ''}`}>
+      <div className="flex items-center justify-between mb-0.5">
+        <p className="text-[9px] text-base-content/30 font-semibold uppercase tracking-wide flex items-center gap-0.5">
+          {abbrev[slot]}{isEatingOut && <ForkKnife size={8} className="text-secondary" weight="fill" />}
+        </p>
+        <button className={`transition-colors ${isEatingOut ? 'text-secondary' : 'text-base-content/15 hover:text-base-content/40'}`} onClick={onToggleEatingOut} title={isEatingOut ? 'Eating out — click to undo' : 'Mark as eating out'}>
+          <ForkKnife size={9} weight={isEatingOut ? 'fill' : 'regular'} />
+        </button>
+      </div>
       <div className="flex flex-col gap-0.5 flex-1">
-        {mealIds.map(mealId => (
-          <div key={mealId} className="bg-primary/10 text-primary rounded px-1.5 py-0.5 text-xs flex items-center gap-1 group">
-            <span className="flex-1 truncate">{mealMap.get(mealId)?.name ?? '—'}</span>
-            <button
-              className="opacity-0 group-hover:opacity-100 text-base-content/50 hover:text-error transition-opacity"
-              onClick={() => onRemoveMeal(mealId)}
-              aria-label="Remove"
-            ><X size={10} /></button>
+        {mealIds.map(id => (
+          <div key={id} className="bg-primary/10 text-primary rounded px-1.5 py-0.5 text-xs flex items-center gap-1 group">
+            <span className="flex-1 truncate">{mealMap.get(id)?.name ?? '—'}</span>
+            <button className="opacity-0 group-hover:opacity-100 text-base-content/50 hover:text-error transition-opacity" onClick={() => onRemoveMeal(id)}><X size={10} /></button>
+          </div>
+        ))}
+        {(tryMealIds ?? []).map(id => (
+          <div key={id} className="bg-accent/15 text-accent-content rounded px-1.5 py-0.5 text-xs flex items-center gap-0.5 group">
+            <Sparkle size={8} className="text-accent flex-shrink-0" weight="fill" />
+            <span className="flex-1 truncate">{mealToTryMap.get(id)?.title ?? '—'}</span>
+            <button className="opacity-0 group-hover:opacity-100 text-base-content/50 hover:text-error transition-opacity" onClick={() => onRemoveTryMeal(id)}><X size={10} /></button>
           </div>
         ))}
         {slot === 'snack' && (snackIngredientIds ?? []).map(ingId => (
           <div key={ingId} className="bg-success/10 text-success rounded px-1.5 py-0.5 text-xs flex items-center gap-1 group">
             <span className="flex-1 truncate">{ingredientMap.get(ingId)?.name ?? '—'}</span>
-            <button
-              className="opacity-0 group-hover:opacity-100 text-base-content/50 hover:text-error transition-opacity"
-              onClick={() => onRemoveSnackIngredient?.(ingId)}
-              aria-label="Remove"
-            ><X size={10} /></button>
+            <button className="opacity-0 group-hover:opacity-100 text-base-content/50 hover:text-error transition-opacity" onClick={() => onRemoveSnackIngredient?.(ingId)}><X size={10} /></button>
           </div>
         ))}
       </div>
-      <button
-        className="text-base-content/20 hover:text-base-content/50 transition-colors flex items-center justify-center mt-0.5"
-        onClick={onClickAdd}
-        aria-label={`Add to ${slot}`}
-      >
-        <Plus size={11} />
-      </button>
+      <div className="flex items-center gap-0.5 mt-0.5">
+        <button className="text-base-content/20 hover:text-base-content/50 transition-colors flex-1 flex items-center justify-center" onClick={onClickAdd}><Plus size={11} /></button>
+        <button className="text-accent/30 hover:text-accent transition-colors" onClick={onClickTry} title="Schedule a meal to try"><Sparkle size={10} /></button>
+      </div>
     </div>
   )
 }
 
-function DroppableDay({ date, day, dayName, mealMap, ingredientMap, onRemoveMeal, onClickAdd, onToggleEatingOut, onRemoveSnackIngredient }: {
-  date: string
-  day: MealPlanDay
-  dayName: string
-  mealMap: Map<number, Meal>
-  ingredientMap: Map<number, Ingredient>
-  onRemoveMeal: (slot: MealSlot, mealId: number) => void
-  onClickAdd: (slot: MealSlot) => void
-  onToggleEatingOut: () => void
-  onRemoveSnackIngredient: (ingId: number) => void
+function DroppableDay({ date, day, dayName, mealMap, ingredientMap, mealToTryMap, onRemoveMeal, onClickAdd, onToggleSlotEatingOut, onToggleHighEnergy, onRemoveSnackIngredient, onClickTry, onRemoveTryMeal }: {
+  date: string; day: MealPlanDay; dayName: string
+  mealMap: Map<number, Meal>; ingredientMap: Map<number, Ingredient>; mealToTryMap: Map<number, MealToTry>
+  onRemoveMeal: (slot: MealSlot, mealId: number) => void; onClickAdd: (slot: MealSlot) => void
+  onToggleSlotEatingOut: (slot: MealSlot) => void; onToggleHighEnergy: () => void
+  onRemoveSnackIngredient: (ingId: number) => void; onClickTry: (slot: MealSlot) => void; onRemoveTryMeal: (slot: MealSlot, id: number) => void
 }) {
   const dateNum = date.split('-')[2]
-
   return (
-    <div className={`flex flex-col rounded-lg border border-base-300 bg-base-50 overflow-hidden transition-opacity ${day.eatingOut ? 'opacity-60' : ''}`}>
-      <div className="text-center py-1.5 bg-base-200 border-b border-base-300">
-        <p className="text-xs font-semibold text-base-content/50">{dayName}</p>
-        <p className="text-sm font-bold">{dateNum}</p>
+    <div className={`flex flex-col rounded-lg border overflow-hidden ${day.highEnergy ? 'border-warning/60' : 'border-base-300'}`}>
+      <div className={`text-center py-1.5 border-b flex items-center justify-center gap-1 ${day.highEnergy ? 'bg-warning/20 border-warning/40' : 'bg-base-200 border-base-300'}`}>
+        <div>
+          <p className="text-xs font-semibold text-base-content/50">{dayName}</p>
+          <p className="text-sm font-bold">{dateNum}</p>
+        </div>
+        {day.highEnergy && <Lightning size={11} className="text-warning" weight="fill" />}
       </div>
-      {day.eatingOut ? (
-        <div
-          className="flex-1 flex flex-col items-center justify-center py-3 cursor-pointer group"
-          onClick={onToggleEatingOut}
-          title="Click to unmark eating out"
-        >
-          <span className="text-lg">🍽️</span>
-          <span className="text-[9px] text-base-content/40 mt-0.5">Eating out</span>
-        </div>
-      ) : (
-        <div className="flex flex-col flex-1">
-          {MEAL_SLOTS.map(slot => (
-            <DroppableSlot
-              key={slot}
-              date={date}
-              slot={slot}
-              mealIds={day.slots[slot]}
-              snackIngredientIds={slot === 'snack' ? day.snackIngredientIds : undefined}
-              mealMap={mealMap}
-              ingredientMap={ingredientMap}
-              onRemoveMeal={(mealId) => onRemoveMeal(slot, mealId)}
-              onClickAdd={() => onClickAdd(slot)}
-              onRemoveSnackIngredient={onRemoveSnackIngredient}
-            />
-          ))}
-        </div>
-      )}
+      <div className="flex flex-col flex-1">
+        {MEAL_SLOTS.map(slot => (
+          <DroppableSlot
+            key={slot} date={date} slot={slot}
+            mealIds={day.slots[slot]}
+            snackIngredientIds={slot === 'snack' ? day.snackIngredientIds : undefined}
+            tryMealIds={day.tryMealSlots?.[slot]}
+            mealMap={mealMap} ingredientMap={ingredientMap} mealToTryMap={mealToTryMap}
+            isEatingOut={day.eatingOutSlots?.[slot] ?? false}
+            onRemoveMeal={(mealId) => onRemoveMeal(slot, mealId)}
+            onClickAdd={() => onClickAdd(slot)}
+            onToggleEatingOut={() => onToggleSlotEatingOut(slot)}
+            onRemoveSnackIngredient={onRemoveSnackIngredient}
+            onClickTry={() => onClickTry(slot)}
+            onRemoveTryMeal={(id) => onRemoveTryMeal(slot, id)}
+          />
+        ))}
+      </div>
       <button
-        className={`text-[8px] py-0.5 text-base-content/30 hover:text-base-content/60 transition-colors border-t border-base-200 ${day.eatingOut ? 'text-warning/70' : ''}`}
-        onClick={onToggleEatingOut}
+        className={`text-[8px] py-0.5 border-t flex items-center justify-center gap-0.5 transition-colors ${day.highEnergy ? 'text-warning border-warning/30 hover:text-warning/60' : 'text-base-content/25 border-base-200 hover:text-warning'}`}
+        onClick={onToggleHighEnergy}
+        title={day.highEnergy ? 'Unmark high energy day' : 'Mark as high energy day'}
       >
-        {day.eatingOut ? '↺ undo' : '🍽 out'}
+        <Lightning size={8} weight={day.highEnergy ? 'fill' : 'regular'} /> ⚡
       </button>
     </div>
   )
@@ -1022,6 +1082,174 @@ function ShoppingReviewModal({ items, onConfirm, onClose }: {
             <ShoppingCart size={14} weight="bold" />
             Add {selected.size} to list
           </button>
+        </div>
+      </div>
+      <div className="modal-backdrop" onClick={onClose} />
+    </dialog>
+  )
+}
+
+// ── Meals to try section ─────────────────────────────────────────────────────
+
+function MealsToTrySection({ mealsToTry, ingredientMap, onAdd, onEdit, onDelete, onMarkTried }: {
+  mealsToTry: MealToTry[]
+  ingredientMap: Map<number, Ingredient>
+  onAdd: () => void
+  onEdit: (m: MealToTry) => void
+  onDelete: (id: number) => Promise<void>
+  onMarkTried: (m: MealToTry) => void
+}) {
+  const pending = mealsToTry.filter(m => !m.tried)
+  const tried = mealsToTry.filter(m => m.tried)
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h1 className="text-2xl font-bold">Meals to try</h1>
+          <p className="text-sm text-base-content/50 mt-0.5">Collect recipes you want to make. Convert them to real meals when you've tried them.</p>
+        </div>
+        <button className="btn btn-accent btn-sm gap-1" onClick={onAdd}>
+          <Plus size={15} weight="bold" /> Add recipe
+        </button>
+      </div>
+
+      {mealsToTry.length === 0 ? (
+        <div className="text-center py-16 text-base-content/40">
+          <Sparkle size={48} weight="thin" className="mx-auto mb-3 opacity-40" />
+          <p className="font-medium">Nothing saved yet</p>
+          <p className="text-sm mt-1">Save recipes, URLs and ideas here to try later</p>
+        </div>
+      ) : (
+        <>
+          {pending.length > 0 && (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+              {pending.map(m => (
+                <MealToTryCard key={m.id} item={m} ingredientMap={ingredientMap} onEdit={onEdit} onDelete={onDelete} onMarkTried={onMarkTried} />
+              ))}
+            </div>
+          )}
+          {tried.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-base-content/40 uppercase tracking-wide mb-3">Already tried ({tried.length})</p>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 opacity-60">
+                {tried.map(m => (
+                  <MealToTryCard key={m.id} item={m} ingredientMap={ingredientMap} onEdit={onEdit} onDelete={onDelete} onMarkTried={onMarkTried} />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+function MealToTryCard({ item, ingredientMap, onEdit, onDelete, onMarkTried }: {
+  item: MealToTry
+  ingredientMap: Map<number, Ingredient>
+  onEdit: (m: MealToTry) => void
+  onDelete: (id: number) => Promise<void>
+  onMarkTried: (m: MealToTry) => void
+}) {
+  return (
+    <div className={`card shadow-sm border transition-all ${item.tried ? 'bg-base-200 border-base-300' : 'bg-base-100 border-accent/20 hover:shadow-md'}`}>
+      <div className="card-body p-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            {item.tried && <CheckCircle size={15} className="text-success flex-shrink-0" weight="fill" />}
+            <h3 className={`font-bold text-base leading-snug truncate ${item.tried ? 'line-through text-base-content/50' : ''}`}>{item.title}</h3>
+            {item.isVegetarian && <span className="flex-shrink-0">🌿</span>}
+          </div>
+          <div className="flex gap-1 flex-shrink-0">
+            <button className="btn btn-ghost btn-xs" onClick={() => onEdit(item)}><PencilSimple size={14} /></button>
+            <button className="btn btn-ghost btn-xs text-error opacity-50 hover:opacity-100" onClick={() => onDelete(item.id!)}><Trash size={14} /></button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
+          {item.cookingTime && (
+            <span className={`badge badge-sm ${COOKING_TIME_BADGE[item.cookingTime]}`}>{COOKING_TIME_LABELS[item.cookingTime]}</span>
+          )}
+          {item.url && (
+            <a href={item.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-secondary hover:text-secondary/70 truncate max-w-[180px]">
+              <Link size={11} /> <span className="truncate">{new URL(item.url).hostname.replace('www.', '')}</span>
+            </a>
+          )}
+        </div>
+
+        {item.notes && <p className="text-sm text-base-content/60 line-clamp-2 mt-1">{item.notes}</p>}
+
+        {item.ingredients.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">
+            {item.ingredients.slice(0, 5).map(({ ingredientId, role }) => {
+              const ing = ingredientMap.get(ingredientId)
+              if (!ing) return null
+              const roleClass = role && role !== 'core' ? INGREDIENT_ROLE_BADGE_DISPLAY[role] : 'badge-ghost'
+              return <span key={ingredientId} className={`badge badge-sm ${roleClass}`}>{ing.name}</span>
+            })}
+            {item.ingredients.length > 5 && <span className="badge badge-ghost badge-sm">+{item.ingredients.length - 5}</span>}
+          </div>
+        )}
+
+        {!item.tried && (
+          <div className="mt-3 pt-3 border-t border-base-200">
+            <button className="btn btn-success btn-sm btn-outline w-full gap-1.5" onClick={() => onMarkTried(item)}>
+              <CheckCircle size={14} weight="bold" /> Meal tried! → Add to my meals
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function TryMealPickerModal({ mealsToTry, plannedIds, onAdd, onClose }: {
+  mealsToTry: MealToTry[]
+  plannedIds: number[]
+  onAdd: (id: number) => Promise<void>
+  onClose: () => void
+}) {
+  const [search, setSearch] = useState('')
+  const planned = new Set(plannedIds)
+  const filtered = mealsToTry.filter(m =>
+    !m.tried && !planned.has(m.id!) &&
+    (!search || m.title.toLowerCase().includes(search.toLowerCase()))
+  )
+  return (
+    <dialog className="modal modal-open">
+      <div className="modal-box w-full max-w-sm">
+        <h3 className="font-bold text-lg mb-0.5 flex items-center gap-2">
+          <Sparkle size={18} className="text-accent" weight="fill" /> Schedule a meal to try
+        </h3>
+        <p className="text-sm text-base-content/50 mb-3">Pick from your saved recipes</p>
+        <label className="input input-bordered input-sm flex items-center gap-2 mb-3">
+          <input className="grow" placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)} autoFocus />
+        </label>
+        {filtered.length === 0 ? (
+          <p className="text-sm text-base-content/40 py-4 text-center">
+            {mealsToTry.filter(m => !m.tried).length === 0 ? 'No meals to try saved yet — add some in the Meals to try tab' : 'Nothing matches'}
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-1 max-h-64 overflow-y-auto">
+            {filtered.map(m => (
+              <li key={m.id}>
+                <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-base-200 text-sm flex items-center justify-between gap-2" onClick={() => onAdd(m.id!)}>
+                  <span className="flex items-center gap-1 min-w-0">
+                    {m.isVegetarian && <span>🌿</span>}
+                    <span className="truncate">{m.title}</span>
+                  </span>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {m.cookingTime && <span className={`badge badge-xs ${COOKING_TIME_BADGE[m.cookingTime]}`}>{COOKING_TIME_LABELS[m.cookingTime]}</span>}
+                    {m.url && <Link size={11} className="text-secondary" />}
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="modal-action mt-3">
+          <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>
         </div>
       </div>
       <div className="modal-backdrop" onClick={onClose} />

@@ -18,6 +18,13 @@ features
 - common meals - i should be able to track some common meals and recipes / ingredients and swipe through them as a gallery of items so i can decide what i want to eat
 - meal planning - i should be able to plan a week of meals in a few ways, ideally i could select ingredients i want to use and drag them into a day
 
+implemented
+- ability for user to mark a meal as "out" in the meal plan - will be eating out -> could be a tick box on the section or a 
+- on the add meal part, allow the user to browse by cooking time
+- also allow the user to add just a single ingredient specifically on the snack part of the drag+drop (only by clicking the plus on snack)
+- allow select default storage notes for new ingredients
+- tickbox to mark meals as veggie 
+
 future ideas
 - nutritional information of meals -> when
 - recipe detection from websites
@@ -40,11 +47,6 @@ Further ideas
 x optional ingredients eg toppings?
 - actual meals vs meal plan -> what did i actually eat -> this data shouldn't be saved to github nd should be exportable as json or csv
 - leftovers -> should be able to mark when you have leftovers in inventory from a dinner
-- ability for user to mark a meal as "out" in the meal plan - will be eating out -> could be a tick box on the section or a 
-- on the add meal part, allow the user to browse by cooking time
-- also allow the user to add just a single ingredient specifically on the snack part of the drag+drop (only by clicking the plus on snack)
-- allow select default storage notes for new ingredients
-- tickbox to mark meals as veggie 
 
 
 - llow some ingredients to be marked as 

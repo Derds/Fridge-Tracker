@@ -61,9 +61,14 @@ interface WeekPlannerStore {
   loadWeek: (weekStart?: string) => Promise<void>
   addMealToDay: (date: string, slot: MealSlot, mealId: number) => Promise<void>
   removeMealFromDay: (date: string, slot: MealSlot, mealId: number) => Promise<void>
+  /** @deprecated use toggleSlotEatingOut */
   toggleEatingOut: (date: string) => Promise<void>
+  toggleSlotEatingOut: (date: string, slot: MealSlot) => Promise<void>
+  toggleHighEnergy: (date: string) => Promise<void>
   addSnackIngredient: (date: string, ingredientId: number) => Promise<void>
   removeSnackIngredient: (date: string, ingredientId: number) => Promise<void>
+  addTryMealToSlot: (date: string, slot: MealSlot, mealToTryId: number) => Promise<void>
+  removeTryMealFromSlot: (date: string, slot: MealSlot, mealToTryId: number) => Promise<void>
 }
 
 export const useWeekPlannerStore = create<WeekPlannerStore>((set, get) => ({
@@ -118,6 +123,28 @@ export const useWeekPlannerStore = create<WeekPlannerStore>((set, get) => ({
     set({ plan: { ...plan, days } })
   },
 
+  toggleSlotEatingOut: async (date, slot) => {
+    const { plan } = get()
+    if (!plan) return
+    const days = plan.days.map(d => {
+      if (d.date !== date) return d
+      const current = d.eatingOutSlots?.[slot] ?? false
+      return { ...d, eatingOutSlots: { ...d.eatingOutSlots, [slot]: !current } }
+    })
+    await savePlanDays(plan, days)
+    set({ plan: { ...plan, days } })
+  },
+
+  toggleHighEnergy: async (date) => {
+    const { plan } = get()
+    if (!plan) return
+    const days = plan.days.map(d =>
+      d.date === date ? { ...d, highEnergy: !d.highEnergy } : d
+    )
+    await savePlanDays(plan, days)
+    set({ plan: { ...plan, days } })
+  },
+
   addSnackIngredient: async (date, ingredientId) => {
     const { plan } = get()
     if (!plan) return
@@ -137,6 +164,31 @@ export const useWeekPlannerStore = create<WeekPlannerStore>((set, get) => ({
     const days = plan.days.map(d =>
       d.date === date
         ? { ...d, snackIngredientIds: (d.snackIngredientIds ?? []).filter(id => id !== ingredientId) }
+        : d
+    )
+    await savePlanDays(plan, days)
+    set({ plan: { ...plan, days } })
+  },
+
+  addTryMealToSlot: async (date, slot, mealToTryId) => {
+    const { plan } = get()
+    if (!plan) return
+    const days = plan.days.map(d => {
+      if (d.date !== date) return d
+      const existing = d.tryMealSlots?.[slot] ?? []
+      if (existing.includes(mealToTryId)) return d
+      return { ...d, tryMealSlots: { ...d.tryMealSlots, [slot]: [...existing, mealToTryId] } }
+    })
+    await savePlanDays(plan, days)
+    set({ plan: { ...plan, days } })
+  },
+
+  removeTryMealFromSlot: async (date, slot, mealToTryId) => {
+    const { plan } = get()
+    if (!plan) return
+    const days = plan.days.map(d =>
+      d.date === date
+        ? { ...d, tryMealSlots: { ...d.tryMealSlots, [slot]: (d.tryMealSlots?.[slot] ?? []).filter(id => id !== mealToTryId) } }
         : d
     )
     await savePlanDays(plan, days)
