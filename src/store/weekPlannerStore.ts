@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { db } from '../db'
-import type { MealPlan, MealPlanDay } from '../types'
+import type { MealPlan, MealPlanDay, MealSlot } from '../types'
 
 function toLocalISO(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
@@ -31,10 +31,21 @@ export function formatDayLabel(date: string, format: 'short' | 'full' = 'short')
     : d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' })
 }
 
+function emptySlots(): Record<MealSlot, number[]> {
+  return { breakfast: [], lunch: [], dinner: [], snack: [] }
+}
+
+/** Migrate old-format days (flat mealIds) to slot-based format */
+function normalizeDay(day: MealPlanDay & { mealIds?: number[] }): MealPlanDay {
+  if (day.slots) return day
+  const old = (day as any).mealIds ?? []
+  return { date: day.date, ingredientIds: day.ingredientIds ?? [], slots: { ...emptySlots(), dinner: old } }
+}
+
 function makeEmptyPlan(weekStart: string): Omit<MealPlan, 'id'> {
   return {
     weekStartDate: weekStart,
-    days: getWeekDays(weekStart).map(date => ({ date, mealIds: [], ingredientIds: [] })),
+    days: getWeekDays(weekStart).map(date => ({ date, slots: emptySlots(), ingredientIds: [] })),
     createdAt: new Date(),
   }
 }
@@ -48,8 +59,8 @@ interface WeekPlannerStore {
   weekStart: string
   loading: boolean
   loadWeek: (weekStart?: string) => Promise<void>
-  addMealToDay: (date: string, mealId: number) => Promise<void>
-  removeMealFromDay: (date: string, mealId: number) => Promise<void>
+  addMealToDay: (date: string, slot: MealSlot, mealId: number) => Promise<void>
+  removeMealFromDay: (date: string, slot: MealSlot, mealId: number) => Promise<void>
 }
 
 export const useWeekPlannerStore = create<WeekPlannerStore>((set, get) => ({
@@ -65,26 +76,30 @@ export const useWeekPlannerStore = create<WeekPlannerStore>((set, get) => ({
       const id = await db.mealPlans.add(makeEmptyPlan(ws) as MealPlan)
       plan = await db.mealPlans.get(id)
     }
+    if (plan) plan = { ...plan, days: plan.days.map(normalizeDay) }
     set({ plan: plan ?? null, loading: false })
   },
 
-  addMealToDay: async (date, mealId) => {
+  addMealToDay: async (date, slot, mealId) => {
     const { plan } = get()
     if (!plan) return
-    const days = plan.days.map(d =>
-      d.date === date && !d.mealIds.includes(mealId)
-        ? { ...d, mealIds: [...d.mealIds, mealId] }
-        : d
-    )
+    const days = plan.days.map(d => {
+      if (d.date !== date) return d
+      const slotIds = d.slots[slot]
+      if (slotIds.includes(mealId)) return d
+      return { ...d, slots: { ...d.slots, [slot]: [...slotIds, mealId] } }
+    })
     await savePlanDays(plan, days)
     set({ plan: { ...plan, days } })
   },
 
-  removeMealFromDay: async (date, mealId) => {
+  removeMealFromDay: async (date, slot, mealId) => {
     const { plan } = get()
     if (!plan) return
     const days = plan.days.map(d =>
-      d.date === date ? { ...d, mealIds: d.mealIds.filter(id => id !== mealId) } : d
+      d.date === date
+        ? { ...d, slots: { ...d.slots, [slot]: d.slots[slot].filter(id => id !== mealId) } }
+        : d
     )
     await savePlanDays(plan, days)
     set({ plan: { ...plan, days } })

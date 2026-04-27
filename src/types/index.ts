@@ -1,3 +1,29 @@
+export type CookingTime = 'very-quick' | 'quick' | 'medium' | 'decadent'
+
+export const COOKING_TIME_LABELS: Record<CookingTime, string> = {
+  'very-quick': 'Under 15 min',
+  'quick':      'Under 30 min',
+  'medium':     '30 min – 1 hr',
+  'decadent':   '1 hr+',
+}
+
+export const COOKING_TIME_BADGE: Record<CookingTime, string> = {
+  'very-quick': 'badge-success',
+  'quick':      'badge-info',
+  'medium':     'badge-warning',
+  'decadent':   'badge-error',
+}
+
+export type MealSlot = 'breakfast' | 'lunch' | 'dinner' | 'snack'
+export const MEAL_SLOTS: MealSlot[] = ['breakfast', 'lunch', 'dinner', 'snack']
+export const MEAL_SLOT_LABELS: Record<MealSlot, string> = {
+  breakfast: 'Breakfast',
+  lunch:     'Lunch',
+  dinner:    'Dinner',
+  snack:     'Snack',
+}
+
+
 export type NutritionTag =
   | 'high-protein'
   | 'high-fibre'
@@ -57,13 +83,16 @@ export interface Meal {
   name: string
   ingredients: Array<{ ingredientId: number; servings: number }>
   notes?: string
+  cookingTime?: CookingTime
   createdAt: Date
 }
 
 export interface MealPlanDay {
   date: string  // ISO date string YYYY-MM-DD
-  mealIds: number[]
+  slots: Record<MealSlot, number[]>
   ingredientIds: number[]
+  /** @deprecated kept for migration of old data */
+  mealIds?: number[]
 }
 
 export interface MealPlan {

@@ -14,14 +14,14 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { id: 'catalog',   label: 'Catalog',  Icon: Books       },
+  { id: 'meals',     label: 'Meals',    Icon: ForkKnife   },
   { id: 'inventory', label: 'Fridge',   Icon: Package     },
   { id: 'shopping',  label: 'Shopping', Icon: ShoppingCart },
-  { id: 'meals',     label: 'Meals',    Icon: ForkKnife   },
+  { id: 'catalog',   label: 'Catalog',  Icon: Books       },
 ]
 
 function App() {
-  const [page, setPage] = useState<Page>('catalog')
+  const [page, setPage] = useState<Page>('meals')
 
   return (
     <div className="min-h-screen bg-base-100 flex flex-col">

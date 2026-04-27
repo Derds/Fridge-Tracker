@@ -17,7 +17,11 @@ import { useIngredientStore } from '../store/ingredientStore'
 import { useInventoryStore } from '../store/inventoryStore'
 import { useShoppingStore } from '../store/shoppingStore'
 import { MealForm } from '../components/MealForm'
-import type { Ingredient, Meal, MealPlanDay } from '../types'
+import type { Ingredient, Meal, MealPlanDay, MealSlot } from '../types'
+import {
+  MEAL_SLOTS, MEAL_SLOT_LABELS,
+  COOKING_TIME_LABELS, COOKING_TIME_BADGE,
+} from '../types'
 import { ForkKnife, Plus, PencilSimple, Trash, X, ArrowLeft, ArrowRight, CheckCircle } from '@phosphor-icons/react'
 
 const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -27,11 +31,11 @@ interface Props {
 }
 
 export function MealsPage({ onNavigateToShopping }: Props) {
-  const [subTab, setSubTab] = useState<'gallery' | 'planner'>('gallery')
+  const [subTab, setSubTab] = useState<'gallery' | 'planner'>('planner')
   const [showForm, setShowForm] = useState(false)
   const [editMeal, setEditMeal] = useState<Meal | undefined>()
   const [activeMeal, setActiveMeal] = useState<Meal | null>(null)
-  const [addMealForDay, setAddMealForDay] = useState<string | null>(null)
+  const [addMealForSlot, setAddMealForSlot] = useState<{ date: string; slot: MealSlot } | null>(null)
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [generatedMsg, setGeneratedMsg] = useState(false)
 
@@ -51,7 +55,6 @@ export function MealsPage({ onNavigateToShopping }: Props) {
     loadInventory()
   }, [loadMeals, loadIngredients, loadWeek, loadOrCreateList, loadInventory])
 
-  // Default selected day to today (or first day of week)
   useEffect(() => {
     if (!selectedDay && weekDays.length) {
       const now = new Date()
@@ -64,7 +67,7 @@ export function MealsPage({ onNavigateToShopping }: Props) {
   const ingredientMap = useMemo(() => new Map(ingredients.map(i => [i.id!, i])), [ingredients])
 
   const plannedCount = useMemo(
-    () => plan?.days.reduce((n, d) => n + d.mealIds.length, 0) ?? 0,
+    () => plan?.days.reduce((n, d) => n + MEAL_SLOTS.reduce((s, slot) => s + d.slots[slot].length, 0), 0) ?? 0,
     [plan]
   )
 
@@ -83,9 +86,9 @@ export function MealsPage({ onNavigateToShopping }: Props) {
     const { active, over } = event
     if (!over) return
     const mealId = (active.data.current as { mealId?: number })?.mealId
-    const overId = over.id as string
-    if (mealId != null && overId.startsWith('day-')) {
-      addMealToDay(overId.slice(4), mealId)
+    const match = (over.id as string).match(/^slot-(\d{4}-\d{2}-\d{2})-(breakfast|lunch|dinner|snack)$/)
+    if (mealId != null && match) {
+      addMealToDay(match[1], match[2] as MealSlot, mealId)
     }
   }
 
@@ -94,9 +97,11 @@ export function MealsPage({ onNavigateToShopping }: Props) {
     const inStock = new Set(inventory.filter(i => i.servingsRemaining > 0).map(i => i.ingredientId))
     const needed = new Set<number>()
     for (const day of plan.days) {
-      for (const mealId of day.mealIds) {
-        const meal = mealMap.get(mealId)
-        if (meal) meal.ingredients.forEach(({ ingredientId }) => needed.add(ingredientId))
+      for (const slot of MEAL_SLOTS) {
+        for (const mealId of day.slots[slot]) {
+          const meal = mealMap.get(mealId)
+          if (meal) meal.ingredients.forEach(({ ingredientId }) => needed.add(ingredientId))
+        }
       }
       day.ingredientIds.forEach(id => needed.add(id))
     }
@@ -115,13 +120,19 @@ export function MealsPage({ onNavigateToShopping }: Props) {
 
   return (
     <div className="px-4 py-6 max-w-7xl mx-auto">
-      {/* Sub-tabs */}
-      <div role="tablist" className="tabs tabs-bordered mb-6">
-        <button role="tab" className={`tab ${subTab === 'gallery' ? 'tab-active' : ''}`} onClick={() => setSubTab('gallery')}>
-          Meals {meals.length > 0 && <span className="badge badge-sm ml-1">{meals.length}</span>}
+      {/* Sub-tab toggle */}
+      <div className="join mb-6">
+        <button
+          className={`btn join-item ${subTab === 'gallery' ? 'btn-primary' : 'btn-ghost border border-base-300'}`}
+          onClick={() => setSubTab('gallery')}
+        >
+          Meals {meals.length > 0 && <span className="badge badge-sm ml-1.5">{meals.length}</span>}
         </button>
-        <button role="tab" className={`tab ${subTab === 'planner' ? 'tab-active' : ''}`} onClick={() => setSubTab('planner')}>
-          Week plan {plannedCount > 0 && <span className="badge badge-sm ml-1">{plannedCount}</span>}
+        <button
+          className={`btn join-item ${subTab === 'planner' ? 'btn-primary' : 'btn-ghost border border-base-300'}`}
+          onClick={() => setSubTab('planner')}
+        >
+          Week plan {plannedCount > 0 && <span className="badge badge-sm ml-1.5">{plannedCount}</span>}
         </button>
       </div>
 
@@ -160,7 +171,6 @@ export function MealsPage({ onNavigateToShopping }: Props) {
       {/* ── Week Planner ─────────────────────────────────────────────── */}
       {subTab === 'planner' && (
         <div>
-          {/* Week nav */}
           <div className="flex items-center justify-between mb-5">
             <button className="btn btn-ghost btn-sm" onClick={() => navigateWeek(-7)}><ArrowLeft size={16} /></button>
             <span className="font-semibold text-sm sm:text-base">{formatWeekLabel(weekStart)}</span>
@@ -182,7 +192,7 @@ export function MealsPage({ onNavigateToShopping }: Props) {
                     {meals.length === 0 ? (
                       <p className="text-sm text-base-content/40 italic">No meals saved yet</p>
                     ) : (
-                      <div className="flex flex-col gap-1.5 max-h-[60vh] overflow-y-auto pr-1">
+                      <div className="flex flex-col gap-1.5 max-h-[70vh] overflow-y-auto pr-1">
                         {meals.map(meal => <DraggableMeal key={meal.id} meal={meal} />)}
                       </div>
                     )}
@@ -191,7 +201,7 @@ export function MealsPage({ onNavigateToShopping }: Props) {
                   {/* 7-column grid */}
                   <div className="flex-1 grid grid-cols-7 gap-1.5 overflow-x-auto min-w-0">
                     {weekDays.map((date, i) => {
-                      const day = plan?.days.find(d => d.date === date) ?? { date, mealIds: [], ingredientIds: [] }
+                      const day = plan?.days.find(d => d.date === date) ?? { date, slots: { breakfast: [], lunch: [], dinner: [], snack: [] }, ingredientIds: [] }
                       return (
                         <DroppableDay
                           key={date}
@@ -199,8 +209,8 @@ export function MealsPage({ onNavigateToShopping }: Props) {
                           day={day}
                           dayName={DAY_NAMES[i]}
                           mealMap={mealMap}
-                          onRemoveMeal={mealId => removeMealFromDay(date, mealId)}
-                          onClickAdd={() => setAddMealForDay(date)}
+                          onRemoveMeal={(slot, mealId) => removeMealFromDay(date, slot, mealId)}
+                          onClickAdd={(slot) => setAddMealForSlot({ date, slot })}
                         />
                       )
                     })}
@@ -216,11 +226,13 @@ export function MealsPage({ onNavigateToShopping }: Props) {
                 </DragOverlay>
               </DndContext>
 
-              {/* ── Mobile: day tabs + single day view ── */}
+              {/* ── Mobile: day tabs + slot sections ── */}
               <div className="sm:hidden">
                 <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4 snap-x">
                   {weekDays.map((date, i) => {
-                    const hasMeals = (plan?.days.find(d => d.date === date)?.mealIds.length ?? 0) > 0
+                    const hasMeals = MEAL_SLOTS.some(slot =>
+                      (plan?.days.find(d => d.date === date)?.slots[slot].length ?? 0) > 0
+                    )
                     return (
                       <button
                         key={date}
@@ -235,27 +247,38 @@ export function MealsPage({ onNavigateToShopping }: Props) {
                 </div>
 
                 {selectedDay && (() => {
-                  const day = plan?.days.find(d => d.date === selectedDay) ?? { date: selectedDay, mealIds: [], ingredientIds: [] }
+                  const day = plan?.days.find(d => d.date === selectedDay) ?? { date: selectedDay, slots: { breakfast: [], lunch: [], dinner: [], snack: [] }, ingredientIds: [] }
                   return (
                     <div>
-                      <p className="font-semibold mb-3 text-sm">{formatDayLabel(selectedDay, 'full')}</p>
-                      {day.mealIds.length === 0 ? (
-                        <p className="text-sm text-base-content/40 mb-3 italic">Nothing planned yet</p>
-                      ) : (
-                        <div className="flex flex-col gap-1.5 mb-3">
-                          {day.mealIds.map(mealId => (
-                            <div key={mealId} className="flex items-center gap-2 bg-base-200 rounded-lg px-3 py-2">
-                              <span className="flex-1 text-sm font-medium">{mealMap.get(mealId)?.name ?? '—'}</span>
-                              <button
-                                className="btn btn-ghost btn-xs opacity-40 hover:opacity-100"
-                                onClick={() => removeMealFromDay(selectedDay, mealId)}
-                              ><X size={12} /></button>                            </div>
-                          ))}
+                      <p className="font-semibold mb-4 text-sm">{formatDayLabel(selectedDay, 'full')}</p>
+                      {MEAL_SLOTS.map(slot => (
+                        <div key={slot} className="mb-4">
+                          <p className="text-xs font-semibold text-base-content/50 uppercase tracking-wide mb-1.5">
+                            {MEAL_SLOT_LABELS[slot]}
+                          </p>
+                          {day.slots[slot].length === 0 ? (
+                            <p className="text-xs text-base-content/30 italic mb-1.5">Nothing planned</p>
+                          ) : (
+                            <div className="flex flex-col gap-1 mb-1.5">
+                              {day.slots[slot].map(mealId => (
+                                <div key={mealId} className="flex items-center gap-2 bg-base-200 rounded-lg px-3 py-2">
+                                  <span className="flex-1 text-sm font-medium">{mealMap.get(mealId)?.name ?? '—'}</span>
+                                  <button
+                                    className="btn btn-ghost btn-xs opacity-40 hover:opacity-100"
+                                    onClick={() => removeMealFromDay(selectedDay, slot, mealId)}
+                                  ><X size={12} /></button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <button
+                            className="btn btn-outline btn-xs w-full gap-1"
+                            onClick={() => setAddMealForSlot({ date: selectedDay, slot })}
+                          >
+                            <Plus size={12} /> Add to {MEAL_SLOT_LABELS[slot].toLowerCase()}
+                          </button>
                         </div>
-                      )}
-                      <button className="btn btn-outline btn-sm w-full gap-1" onClick={() => setAddMealForDay(selectedDay)}>
-                        <Plus size={14} /> Add meal
-                      </button>
+                      ))}
                     </div>
                   )
                 })()}
@@ -294,13 +317,17 @@ export function MealsPage({ onNavigateToShopping }: Props) {
         />
       )}
 
-      {/* Click-to-add meal to day modal */}
-      {addMealForDay && (
+      {/* Click-to-add meal to slot modal */}
+      {addMealForSlot && (
         <AddMealToDayModal
           meals={meals}
-          plannedMealIds={plan?.days.find(d => d.date === addMealForDay)?.mealIds ?? []}
-          onAdd={async (mealId) => { await addMealToDay(addMealForDay, mealId); setAddMealForDay(null) }}
-          onClose={() => setAddMealForDay(null)}
+          slot={addMealForSlot.slot}
+          plannedMealIds={plan?.days.find(d => d.date === addMealForSlot.date)?.slots[addMealForSlot.slot] ?? []}
+          onAdd={async (mealId) => {
+            await addMealToDay(addMealForSlot.date, addMealForSlot.slot, mealId)
+            setAddMealForSlot(null)
+          }}
+          onClose={() => setAddMealForSlot(null)}
         />
       )}
     </div>
@@ -325,6 +352,11 @@ function MealCard({ meal, ingredientMap, onEdit, onDelete }: {
             <button className="btn btn-ghost btn-xs opacity-40 hover:opacity-100" onClick={onDelete} aria-label="Delete"><Trash size={15} /></button>
           </div>
         </div>
+        {meal.cookingTime && (
+          <span className={`badge badge-sm mt-1 ${COOKING_TIME_BADGE[meal.cookingTime]}`}>
+            {COOKING_TIME_LABELS[meal.cookingTime]}
+          </span>
+        )}
         {meal.notes && <p className="text-sm text-base-content/60 line-clamp-2 mt-1">{meal.notes}</p>}
         {meal.ingredients.length > 0 ? (
           <div className="flex flex-wrap gap-1 mt-2">
@@ -362,6 +394,49 @@ function DraggableMeal({ meal }: { meal: Meal }) {
       className={`bg-base-200 rounded-lg px-3 py-2 text-sm cursor-grab active:cursor-grabbing select-none transition-opacity ${isDragging ? 'opacity-30' : 'hover:bg-base-300'}`}
     >
       {meal.name}
+      {meal.cookingTime && (
+        <span className={`badge badge-xs ml-2 ${COOKING_TIME_BADGE[meal.cookingTime]}`} />
+      )}
+    </div>
+  )
+}
+
+function DroppableSlot({ date, slot, mealIds, mealMap, onRemoveMeal, onClickAdd }: {
+  date: string
+  slot: MealSlot
+  mealIds: number[]
+  mealMap: Map<number, Meal>
+  onRemoveMeal: (mealId: number) => void
+  onClickAdd: () => void
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: `slot-${date}-${slot}` })
+  const abbrev: Record<MealSlot, string> = { breakfast: 'Bkfst', lunch: 'Lunch', dinner: 'Dinner', snack: 'Snack' }
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex flex-col p-1 min-h-[52px] transition-colors border-b border-base-200 last:border-b-0 ${isOver ? 'bg-primary/10' : ''}`}
+    >
+      <p className="text-[9px] text-base-content/30 font-semibold uppercase tracking-wide mb-0.5">{abbrev[slot]}</p>
+      <div className="flex flex-col gap-0.5 flex-1">
+        {mealIds.map(mealId => (
+          <div key={mealId} className="bg-primary/10 text-primary rounded px-1.5 py-0.5 text-xs flex items-center gap-1 group">
+            <span className="flex-1 truncate">{mealMap.get(mealId)?.name ?? '—'}</span>
+            <button
+              className="opacity-0 group-hover:opacity-100 text-base-content/50 hover:text-error transition-opacity"
+              onClick={() => onRemoveMeal(mealId)}
+              aria-label="Remove"
+            ><X size={10} /></button>
+          </div>
+        ))}
+      </div>
+      <button
+        className="text-base-content/20 hover:text-base-content/50 transition-colors flex items-center justify-center mt-0.5"
+        onClick={onClickAdd}
+        aria-label={`Add to ${slot}`}
+      >
+        <Plus size={11} />
+      </button>
     </div>
   )
 }
@@ -371,44 +446,37 @@ function DroppableDay({ date, day, dayName, mealMap, onRemoveMeal, onClickAdd }:
   day: MealPlanDay
   dayName: string
   mealMap: Map<number, Meal>
-  onRemoveMeal: (mealId: number) => void
-  onClickAdd: () => void
+  onRemoveMeal: (slot: MealSlot, mealId: number) => void
+  onClickAdd: (slot: MealSlot) => void
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: `day-${date}` })
   const dateNum = date.split('-')[2]
 
   return (
-    <div
-      ref={setNodeRef}
-      className={`flex flex-col min-h-28 rounded-lg border transition-colors p-1.5 ${isOver ? 'border-primary bg-primary/5' : 'border-base-300 bg-base-50'}`}
-    >
-      <div className="text-center mb-1.5">
+    <div className="flex flex-col rounded-lg border border-base-300 bg-base-50 overflow-hidden">
+      <div className="text-center py-1.5 bg-base-200 border-b border-base-300">
         <p className="text-xs font-semibold text-base-content/50">{dayName}</p>
         <p className="text-sm font-bold">{dateNum}</p>
       </div>
-      <div className="flex-1 flex flex-col gap-0.5">
-        {day.mealIds.map(mealId => (
-          <div key={mealId} className="bg-primary/10 text-primary rounded px-1.5 py-0.5 text-xs flex items-center gap-1 group">
-            <span className="flex-1 truncate">{mealMap.get(mealId)?.name ?? '—'}</span>
-            <button
-              className="opacity-0 group-hover:opacity-100 text-base-content/50 hover:text-error"
-              onClick={() => onRemoveMeal(mealId)}
-              aria-label="Remove"
-            >×</button>
-          </div>
+      <div className="flex flex-col flex-1">
+        {MEAL_SLOTS.map(slot => (
+          <DroppableSlot
+            key={slot}
+            date={date}
+            slot={slot}
+            mealIds={day.slots[slot]}
+            mealMap={mealMap}
+            onRemoveMeal={(mealId) => onRemoveMeal(slot, mealId)}
+            onClickAdd={() => onClickAdd(slot)}
+          />
         ))}
       </div>
-      <button
-        className="btn btn-ghost btn-xs w-full text-base-content/30 hover:text-base-content mt-1"
-        onClick={onClickAdd}
-        aria-label="Add meal"
-      ><Plus size={14} /></button>
     </div>
   )
 }
 
-function AddMealToDayModal({ meals, plannedMealIds, onAdd, onClose }: {
+function AddMealToDayModal({ meals, slot, plannedMealIds, onAdd, onClose }: {
   meals: Meal[]
+  slot: MealSlot
   plannedMealIds: number[]
   onAdd: (mealId: number) => Promise<void>
   onClose: () => void
@@ -422,7 +490,8 @@ function AddMealToDayModal({ meals, plannedMealIds, onAdd, onClose }: {
   return (
     <dialog className="modal modal-open">
       <div className="modal-box w-full max-w-sm">
-        <h3 className="font-bold text-lg mb-3">Add meal to day</h3>
+        <h3 className="font-bold text-lg mb-0.5">Add meal</h3>
+        <p className="text-sm text-base-content/50 mb-3">{MEAL_SLOT_LABELS[slot]}</p>
         <label className="input input-bordered input-sm flex items-center gap-2 mb-3">
           <input
             className="grow"
@@ -434,17 +503,22 @@ function AddMealToDayModal({ meals, plannedMealIds, onAdd, onClose }: {
         </label>
         {filtered.length === 0 ? (
           <p className="text-sm text-base-content/40 py-4 text-center">
-            {meals.length === 0 ? 'No meals saved — create some in the Meals tab first' : 'All meals already added for this day'}
+            {meals.length === 0 ? 'No meals saved — create some in the Meals tab first' : 'All meals already added for this slot'}
           </p>
         ) : (
           <ul className="flex flex-col gap-1 max-h-64 overflow-y-auto">
             {filtered.map(meal => (
               <li key={meal.id}>
                 <button
-                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-base-200 text-sm"
+                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-base-200 text-sm flex items-center justify-between"
                   onClick={() => onAdd(meal.id!)}
                 >
-                  {meal.name}
+                  <span>{meal.name}</span>
+                  {meal.cookingTime && (
+                    <span className={`badge badge-xs ${COOKING_TIME_BADGE[meal.cookingTime]}`}>
+                      {COOKING_TIME_LABELS[meal.cookingTime]}
+                    </span>
+                  )}
                 </button>
               </li>
             ))}

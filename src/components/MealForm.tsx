@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
-import type { Meal } from '../types'
+import type { Meal, CookingTime } from '../types'
+import { COOKING_TIME_LABELS } from '../types'
 import { useIngredientStore } from '../store/ingredientStore'
 import { MagnifyingGlass, X } from '@phosphor-icons/react'
 
@@ -18,6 +19,7 @@ export function MealForm({ meal, onSave, onClose }: Props) {
   const { ingredients, loadIngredients } = useIngredientStore()
   const [name, setName] = useState(meal?.name ?? '')
   const [notes, setNotes] = useState(meal?.notes ?? '')
+  const [cookingTime, setCookingTime] = useState<CookingTime>(meal?.cookingTime ?? 'medium')
   const [search, setSearch] = useState('')
   const [entries, setEntries] = useState<IngredientEntry[]>(meal?.ingredients ?? [])
   const [saving, setSaving] = useState(false)
@@ -51,7 +53,7 @@ export function MealForm({ meal, onSave, onClose }: Props) {
     if (!name.trim()) { setError('Name is required'); return }
     setSaving(true)
     try {
-      await onSave({ name: name.trim(), notes: notes.trim() || undefined, ingredients: entries })
+      await onSave({ name: name.trim(), notes: notes.trim() || undefined, cookingTime, ingredients: entries })
       onClose()
     } catch {
       setError('Something went wrong — please try again')
@@ -61,33 +63,48 @@ export function MealForm({ meal, onSave, onClose }: Props) {
 
   return (
     <dialog className="modal modal-open">
-      <div className="modal-box w-full max-w-lg overflow-visible">
-        <h3 className="font-bold text-lg mb-4">{meal ? 'Edit meal' : 'New meal'}</h3>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <label className="form-control">
-            <div className="label"><span className="label-text">Name</span></div>
+      <div className="modal-box w-full max-w-lg overflow-visible p-6">
+        <h3 className="font-bold text-lg mb-5">{meal ? 'Edit meal' : 'New meal'}</h3>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+
+          <div className="form-control">
+            <label className="label pb-1.5"><span className="label-text font-medium">Name</span></label>
             <input
-              className="input input-bordered"
+              className="input input-bordered w-full"
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="e.g. Spaghetti bolognese"
               autoFocus
             />
-          </label>
+          </div>
 
-          <label className="form-control">
-            <div className="label"><span className="label-text">Notes <span className="text-base-content/50">(optional)</span></span></div>
+          <div className="form-control">
+            <label className="label pb-1.5"><span className="label-text font-medium">Cooking time</span></label>
+            <select
+              className="select select-bordered w-full"
+              value={cookingTime}
+              onChange={e => setCookingTime(e.target.value as CookingTime)}
+            >
+              <option value="very-quick">Very quick — {COOKING_TIME_LABELS['very-quick']}</option>
+              <option value="quick">Quick — {COOKING_TIME_LABELS['quick']}</option>
+              <option value="medium">Medium — {COOKING_TIME_LABELS['medium']}</option>
+              <option value="decadent">Slow / Decadent — {COOKING_TIME_LABELS['decadent']}</option>
+            </select>
+          </div>
+
+          <div className="form-control">
+            <label className="label pb-1.5"><span className="label-text font-medium">Notes <span className="text-base-content/50 font-normal">(optional)</span></span></label>
             <textarea
-              className="textarea textarea-bordered"
+              className="textarea textarea-bordered w-full"
               value={notes}
               onChange={e => setNotes(e.target.value)}
               rows={2}
               placeholder="e.g. Use fresh pasta if possible"
             />
-          </label>
+          </div>
 
           <div className="form-control">
-            <div className="label"><span className="label-text">Ingredients</span></div>
+            <label className="label pb-1.5"><span className="label-text font-medium">Ingredients</span></label>
 
             {entries.length > 0 && (
               <div className="flex flex-col gap-1 mb-2">
@@ -117,7 +134,6 @@ export function MealForm({ meal, onSave, onClose }: Props) {
               </div>
             )}
 
-            {/* Search to add ingredient */}
             <div className="relative">
               <label className="input input-bordered input-sm flex items-center gap-2">
                 <MagnifyingGlass size={16} className="opacity-50 flex-shrink-0" />
@@ -148,7 +164,7 @@ export function MealForm({ meal, onSave, onClose }: Props) {
 
           {error && <p className="text-error text-sm">{error}</p>}
 
-          <div className="modal-action mt-2">
+          <div className="modal-action mt-1">
             <button type="button" className="btn btn-ghost" onClick={onClose} disabled={saving}>Cancel</button>
             <button type="submit" className="btn btn-primary" disabled={saving}>
               {saving ? <span className="loading loading-spinner loading-sm" /> : meal ? 'Save changes' : 'Create meal'}
