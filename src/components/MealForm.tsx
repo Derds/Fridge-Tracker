@@ -1,12 +1,13 @@
 import { useState, useMemo, useEffect } from 'react'
-import type { Meal, CookingTime } from '../types'
-import { COOKING_TIME_LABELS } from '../types'
+import type { Meal, CookingTime, IngredientRole } from '../types'
+import { COOKING_TIME_LABELS, INGREDIENT_ROLE_LABELS, INGREDIENT_ROLE_BADGE } from '../types'
 import { useIngredientStore } from '../store/ingredientStore'
 import { MagnifyingGlass, X } from '@phosphor-icons/react'
 
 interface IngredientEntry {
   ingredientId: number
   servings: number
+  role: IngredientRole
 }
 
 interface Props {
@@ -21,7 +22,9 @@ export function MealForm({ meal, onSave, onClose }: Props) {
   const [notes, setNotes] = useState(meal?.notes ?? '')
   const [cookingTime, setCookingTime] = useState<CookingTime>(meal?.cookingTime ?? 'medium')
   const [search, setSearch] = useState('')
-  const [entries, setEntries] = useState<IngredientEntry[]>(meal?.ingredients ?? [])
+  const [entries, setEntries] = useState<IngredientEntry[]>(
+    meal?.ingredients.map(e => ({ ...e, role: e.role ?? 'core' })) ?? []
+  )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -40,12 +43,21 @@ export function MealForm({ meal, onSave, onClose }: Props) {
   const ingredientMap = useMemo(() => new Map(ingredients.map(i => [i.id!, i])), [ingredients])
 
   function addIngredient(id: number) {
-    setEntries(e => [...e, { ingredientId: id, servings: 1 }])
+    setEntries(e => [...e, { ingredientId: id, servings: 1, role: 'core' }])
     setSearch('')
   }
 
   function updateServings(id: number, val: number) {
     setEntries(e => e.map(x => x.ingredientId === id ? { ...x, servings: Math.max(1, val) } : x))
+  }
+
+  function cycleRole(id: number) {
+    const order: IngredientRole[] = ['core', 'optional', 'substitute']
+    setEntries(e => e.map(x => {
+      if (x.ingredientId !== id) return x
+      const next = order[(order.indexOf(x.role) + 1) % order.length]
+      return { ...x, role: next }
+    }))
   }
 
   async function handleSubmit(ev: React.FormEvent) {
@@ -113,15 +125,24 @@ export function MealForm({ meal, onSave, onClose }: Props) {
               <div className="flex flex-col gap-1 mb-2">
                 {entries.map(entry => {
                   const ing = ingredientMap.get(entry.ingredientId)
+                  const roleBadge = INGREDIENT_ROLE_BADGE[entry.role]
                   return (
                     <div key={entry.ingredientId} className="flex items-center gap-2 bg-base-200 rounded-lg px-3 py-1.5">
                       <span className="flex-1 text-sm">{ing?.name ?? '—'}</span>
+                      <button
+                        type="button"
+                        title="Click to change role"
+                        onClick={() => cycleRole(entry.ingredientId)}
+                        className={`badge badge-sm cursor-pointer select-none transition-colors ${roleBadge || 'badge-ghost opacity-40'}`}
+                      >
+                        {INGREDIENT_ROLE_LABELS[entry.role]}
+                      </button>
                       <input
                         type="number"
                         min={1}
                         value={entry.servings}
                         onChange={e => updateServings(entry.ingredientId, Number(e.target.value))}
-                        className="input input-bordered input-xs w-16 text-center"
+                        className="input input-bordered input-xs w-14 text-center"
                       />
                       <span className="text-xs text-base-content/50">srv</span>
                       <button

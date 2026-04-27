@@ -38,3 +38,4 @@ Further ideas
 - meal plan costing -> scrape ingredient prices from supermarket websites -> add this to own feature folder
 - substitutions in meal plan eg doesnt matter which rice or greens, just want one of them
 - optional ingredients eg toppings?
+- actual meals vs meal plan -> what did i actually eat -> this data shouldn't be saved to github nd should be exportable as json or csv

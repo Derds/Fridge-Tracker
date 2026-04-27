@@ -1,3 +1,17 @@
+export type IngredientRole = 'core' | 'optional' | 'substitute'
+
+export const INGREDIENT_ROLE_LABELS: Record<IngredientRole, string> = {
+  core:       'Core',
+  optional:   'Optional',
+  substitute: 'Substitute',
+}
+
+export const INGREDIENT_ROLE_BADGE: Record<IngredientRole, string> = {
+  core:       '',
+  optional:   'badge-info',
+  substitute: 'badge-warning',
+}
+
 export type CookingTime = 'very-quick' | 'quick' | 'medium' | 'decadent'
 
 export const COOKING_TIME_LABELS: Record<CookingTime, string> = {
@@ -81,7 +95,7 @@ export interface InventoryItem {
 export interface Meal {
   id?: number
   name: string
-  ingredients: Array<{ ingredientId: number; servings: number }>
+  ingredients: Array<{ ingredientId: number; servings: number; role?: IngredientRole }>
   notes?: string
   cookingTime?: CookingTime
   createdAt: Date
