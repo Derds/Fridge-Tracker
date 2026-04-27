@@ -4,6 +4,7 @@ import type { IngredientCategory } from '../types'
 import type { Ingredient } from '../types'
 import { SearchInput, CategoryFilter, ShelfLifeBadge } from '../components/CatalogFilters'
 import { IngredientForm } from '../components/IngredientForm'
+import { PencilSimple, Trash, Plus } from '@phosphor-icons/react'
 
 export function CatalogPage() {
   const { ingredients, loading, loadIngredients, deleteIngredient } = useIngredientStore()
@@ -49,8 +50,8 @@ export function CatalogPage() {
           <h1 className="text-2xl font-bold">Ingredient Catalog</h1>
           <p className="text-base-content/60 text-sm mt-1">{ingredients.length} ingredients</p>
         </div>
-        <button className="btn btn-primary btn-sm" onClick={() => { setEditing(undefined); setFormOpen(true) }}>
-          + New ingredient
+        <button className="btn btn-primary btn-sm gap-1" onClick={() => { setEditing(undefined); setFormOpen(true) }}>
+          <Plus size={15} weight="bold" /> New ingredient
         </button>
       </div>
 
@@ -89,8 +90,8 @@ export function CatalogPage() {
                     )}
                   </div>
                   <div className="flex gap-1 shrink-0">
-                    <button className="btn btn-ghost btn-xs" onClick={() => handleEdit(ingredient)} aria-label="Edit">✏️</button>
-                    <button className="btn btn-ghost btn-xs text-error" onClick={() => setConfirmDelete(ingredient)} aria-label="Delete">🗑️</button>
+                    <button className="btn btn-ghost btn-xs" onClick={() => handleEdit(ingredient)} aria-label="Edit"><PencilSimple size={15} /></button>
+                    <button className="btn btn-ghost btn-xs text-error" onClick={() => setConfirmDelete(ingredient)} aria-label="Delete"><Trash size={15} /></button>
                   </div>
                 </div>
               </div>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Books, Package, ShoppingCart, ForkKnife, Leaf, type Icon } from '@phosphor-icons/react'
 import { CatalogPage } from './pages/CatalogPage'
 import { InventoryPage } from './pages/InventoryPage'
 import { ShoppingPage } from './pages/ShoppingPage'
@@ -6,11 +7,17 @@ import { MealsPage } from './pages/MealsPage'
 
 type Page = 'catalog' | 'inventory' | 'shopping' | 'meals'
 
-const NAV: Array<{ id: Page; label: string; icon: string }> = [
-  { id: 'catalog', label: 'Catalog', icon: '📖' },
-  { id: 'inventory', label: 'Fridge', icon: '🥦' },
-  { id: 'shopping', label: 'Shopping', icon: '🛒' },
-  { id: 'meals', label: 'Meals', icon: '🍽️' },
+interface NavItem {
+  id: Page
+  label: string
+  Icon: Icon
+}
+
+const NAV: NavItem[] = [
+  { id: 'catalog',   label: 'Catalog',  Icon: Books       },
+  { id: 'inventory', label: 'Fridge',   Icon: Package     },
+  { id: 'shopping',  label: 'Shopping', Icon: ShoppingCart },
+  { id: 'meals',     label: 'Meals',    Icon: ForkKnife   },
 ]
 
 function App() {
@@ -21,16 +28,20 @@ function App() {
       {/* Top navbar */}
       <header className="navbar bg-base-200 shadow-sm sticky top-0 z-10">
         <div className="navbar-start">
-          <span className="text-lg font-bold text-primary ml-2">🥦 Fridge</span>
+          <span className="flex items-center gap-1.5 text-lg font-bold text-primary ml-2">
+            <Leaf size={20} weight="fill" />
+            Fridge
+          </span>
         </div>
         <div className="navbar-end hidden sm:flex gap-1 mr-2">
-          {NAV.map(n => (
+          {NAV.map(({ id, label, Icon: NavIcon }) => (
             <button
-              key={n.id}
-              onClick={() => setPage(n.id)}
-              className={`btn btn-sm ${page === n.id ? 'btn-primary' : 'btn-ghost'}`}
+              key={id}
+              onClick={() => setPage(id)}
+              className={`btn btn-sm gap-1.5 ${page === id ? 'btn-primary' : 'btn-ghost'}`}
             >
-              {n.icon} {n.label}
+              <NavIcon size={16} weight={page === id ? 'fill' : 'regular'} />
+              {label}
             </button>
           ))}
         </div>
@@ -38,22 +49,22 @@ function App() {
 
       {/* Page content */}
       <main className="flex-1 pb-20 sm:pb-0">
-        {page === 'catalog' && <CatalogPage />}
+        {page === 'catalog'   && <CatalogPage />}
         {page === 'inventory' && <InventoryPage />}
-        {page === 'shopping' && <ShoppingPage />}
-        {page === 'meals' && <MealsPage onNavigateToShopping={() => setPage('shopping')} />}
+        {page === 'shopping'  && <ShoppingPage />}
+        {page === 'meals'     && <MealsPage onNavigateToShopping={() => setPage('shopping')} />}
       </main>
 
       {/* Bottom tab bar — mobile only */}
       <nav className="btm-nav sm:hidden">
-        {NAV.map(n => (
+        {NAV.map(({ id, label, Icon: NavIcon }) => (
           <button
-            key={n.id}
-            onClick={() => setPage(n.id)}
-            className={page === n.id ? 'active text-primary' : ''}
+            key={id}
+            onClick={() => setPage(id)}
+            className={page === id ? 'active text-primary' : ''}
           >
-            <span className="text-xl">{n.icon}</span>
-            <span className="btm-nav-label">{n.label}</span>
+            <NavIcon size={22} weight={page === id ? 'fill' : 'regular'} />
+            <span className="btm-nav-label">{label}</span>
           </button>
         ))}
       </nav>
@@ -62,5 +73,3 @@ function App() {
 }
 
 export default App
-
-

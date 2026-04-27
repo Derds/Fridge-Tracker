@@ -1,5 +1,6 @@
 import type { IngredientCategory, ShelfLifeTier } from '../types'
 import { CATEGORY_LABELS, SHELF_LIFE_LABELS } from '../store/ingredientStore'
+import { MagnifyingGlass, X } from '@phosphor-icons/react'
 
 interface Props {
   value: string
@@ -11,9 +12,7 @@ interface Props {
 export function SearchInput({ value, onChange, placeholder = 'Search…', className = '' }: Props) {
   return (
     <label className={`input input-bordered flex items-center gap-2 ${className}`}>
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4 opacity-70">
-        <path fillRule="evenodd" d="M9.965 11.026a5 5 0 1 1 1.06-1.06l2.755 2.754a.75.75 0 1 1-1.06 1.06l-2.755-2.754ZM10.5 7a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z" clipRule="evenodd" />
-      </svg>
+      <MagnifyingGlass size={16} className="opacity-70 flex-shrink-0" />
       <input
         type="text"
         className="grow"
@@ -22,7 +21,7 @@ export function SearchInput({ value, onChange, placeholder = 'Search…', classN
         onChange={e => onChange(e.target.value)}
       />
       {value && (
-        <button type="button" onClick={() => onChange('')} className="opacity-50 hover:opacity-100">✕</button>
+        <button type="button" onClick={() => onChange('')} className="opacity-50 hover:opacity-100"><X size={14} /></button>
       )}
     </label>
   )

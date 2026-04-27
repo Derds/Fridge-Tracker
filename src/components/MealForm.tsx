@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import type { Meal } from '../types'
 import { useIngredientStore } from '../store/ingredientStore'
+import { MagnifyingGlass, X } from '@phosphor-icons/react'
 
 interface IngredientEntry {
   ingredientId: number
@@ -107,7 +108,9 @@ export function MealForm({ meal, onSave, onClose }: Props) {
                         type="button"
                         className="btn btn-ghost btn-xs opacity-40 hover:opacity-100"
                         onClick={() => setEntries(e => e.filter(x => x.ingredientId !== entry.ingredientId))}
-                      >✕</button>
+                      >
+                        <X size={14} />
+                      </button>
                     </div>
                   )
                 })}
@@ -117,9 +120,7 @@ export function MealForm({ meal, onSave, onClose }: Props) {
             {/* Search to add ingredient */}
             <div className="relative">
               <label className="input input-bordered input-sm flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4 opacity-50 flex-shrink-0">
-                  <path fillRule="evenodd" d="M9.965 11.026a5 5 0 1 1 1.06-1.06l2.755 2.754a.75.75 0 1 1-1.06 1.06l-2.755-2.754ZM10.5 7a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z" clipRule="evenodd" />
-                </svg>
+                <MagnifyingGlass size={16} className="opacity-50 flex-shrink-0" />
                 <input
                   className="grow"
                   placeholder="Search ingredients to add…"

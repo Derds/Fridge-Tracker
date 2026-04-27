@@ -3,6 +3,7 @@ import { useShoppingStore } from '../store/shoppingStore'
 import { useIngredientStore, CATEGORY_LABELS, CATEGORY_ORDER } from '../store/ingredientStore'
 import { useInventoryStore } from '../store/inventoryStore'
 import type { Ingredient, ShoppingListItem } from '../types'
+import { ShoppingCart, Plus, X, MagnifyingGlass } from '@phosphor-icons/react'
 
 export function ShoppingPage() {
   const { list, loading, loadOrCreateList, moveToActual, removeFromActual,
@@ -58,7 +59,9 @@ export function ShoppingPage() {
             <p className="text-base-content/60 text-sm mt-1">{checkedCount}/{totalCount} ticked off</p>
           )}
         </div>
-        <button className="btn btn-primary btn-sm" onClick={() => setAddOpen(true)}>+ Add item</button>
+        <button className="btn btn-primary btn-sm gap-1" onClick={() => setAddOpen(true)}>
+          <Plus size={15} weight="bold" /> Add item
+        </button>
       </div>
 
       {/* Tabs */}
@@ -76,7 +79,7 @@ export function ShoppingPage() {
         <>
           {totalCount === 0 ? (
             <div className="text-center py-12 text-base-content/50">
-              <p className="text-4xl mb-3">🛒</p>
+              <ShoppingCart size={48} weight="thin" className="mx-auto mb-3 opacity-40" />
               <p className="font-medium">Your list is empty</p>
               <p className="text-sm mt-1">Add items or pick from the Suggestions tab</p>
             </div>
@@ -113,7 +116,9 @@ export function ShoppingPage() {
                             className="btn btn-ghost btn-xs opacity-40 hover:opacity-100"
                             onClick={e => { e.preventDefault(); removeFromActual(item.ingredientId) }}
                             aria-label="Remove"
-                          >✕</button>
+                          >
+                            <X size={14} />
+                          </button>
                         </label>
                       )
                     })}
@@ -190,7 +195,7 @@ function SuggestionRow({ ingredient, reason, onAdd, onDismiss }: {
         <p className="font-medium truncate">{ingredient?.name ?? '—'}</p>
         {reason && <p className="text-xs text-base-content/40">{reasonLabel[reason] ?? reason}</p>}
       </div>
-      <button className="btn btn-ghost btn-xs opacity-40 hover:opacity-100" onClick={onDismiss} aria-label="Dismiss">✕</button>
+      <button className="btn btn-ghost btn-xs opacity-40 hover:opacity-100" onClick={onDismiss} aria-label="Dismiss"><X size={14} /></button>
       <button className="btn btn-primary btn-xs" onClick={onAdd}>Add to list</button>
     </div>
   )
@@ -222,9 +227,7 @@ function AddManualModal({ ingredients, existingIds, onAdd, onClose }: {
       <div className="modal-box w-full max-w-md flex flex-col max-h-[85vh]">
         <h3 className="font-bold text-lg mb-3">Add to list</h3>
         <label className="input input-bordered flex items-center gap-2 mb-3">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4 opacity-70">
-            <path fillRule="evenodd" d="M9.965 11.026a5 5 0 1 1 1.06-1.06l2.755 2.754a.75.75 0 1 1-1.06 1.06l-2.755-2.754ZM10.5 7a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z" clipRule="evenodd" />
-          </svg>
+          <MagnifyingGlass size={16} className="opacity-50 flex-shrink-0" />
           <input className="grow" placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)} autoFocus />
         </label>
         <div className="overflow-y-auto flex-1">

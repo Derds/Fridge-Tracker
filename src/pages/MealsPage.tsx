@@ -18,6 +18,7 @@ import { useInventoryStore } from '../store/inventoryStore'
 import { useShoppingStore } from '../store/shoppingStore'
 import { MealForm } from '../components/MealForm'
 import type { Ingredient, Meal, MealPlanDay } from '../types'
+import { ForkKnife, Plus, PencilSimple, Trash, X, ArrowLeft, ArrowRight, CheckCircle } from '@phosphor-icons/react'
 
 const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -129,14 +130,14 @@ export function MealsPage({ onNavigateToShopping }: Props) {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-bold">Meals</h1>
-            <button className="btn btn-primary btn-sm" onClick={() => { setEditMeal(undefined); setShowForm(true) }}>
-              + New meal
+            <button className="btn btn-primary btn-sm gap-1" onClick={() => { setEditMeal(undefined); setShowForm(true) }}>
+              <Plus size={15} weight="bold" /> New meal
             </button>
           </div>
 
           {meals.length === 0 ? (
             <div className="text-center py-12 text-base-content/40">
-              <p className="text-5xl mb-3">🍽️</p>
+              <ForkKnife size={48} weight="thin" className="mx-auto mb-3 opacity-40" />
               <p className="font-medium">No meals saved yet</p>
               <p className="text-sm mt-1">Save your go-to meals to plan your week</p>
             </div>
@@ -161,9 +162,9 @@ export function MealsPage({ onNavigateToShopping }: Props) {
         <div>
           {/* Week nav */}
           <div className="flex items-center justify-between mb-5">
-            <button className="btn btn-ghost btn-sm" onClick={() => navigateWeek(-7)}>←</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => navigateWeek(-7)}><ArrowLeft size={16} /></button>
             <span className="font-semibold text-sm sm:text-base">{formatWeekLabel(weekStart)}</span>
-            <button className="btn btn-ghost btn-sm" onClick={() => navigateWeek(7)}>→</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => navigateWeek(7)}><ArrowRight size={16} /></button>
           </div>
 
           {planLoading ? (
@@ -248,13 +249,12 @@ export function MealsPage({ onNavigateToShopping }: Props) {
                               <button
                                 className="btn btn-ghost btn-xs opacity-40 hover:opacity-100"
                                 onClick={() => removeMealFromDay(selectedDay, mealId)}
-                              >✕</button>
-                            </div>
+                              ><X size={12} /></button>                            </div>
                           ))}
                         </div>
                       )}
-                      <button className="btn btn-outline btn-sm w-full" onClick={() => setAddMealForDay(selectedDay)}>
-                        + Add meal
+                      <button className="btn btn-outline btn-sm w-full gap-1" onClick={() => setAddMealForDay(selectedDay)}>
+                        <Plus size={14} /> Add meal
                       </button>
                     </div>
                   )
@@ -264,8 +264,8 @@ export function MealsPage({ onNavigateToShopping }: Props) {
               {/* Generate shopping list */}
               <div className="mt-6 pt-4 border-t border-base-200 flex items-center justify-end gap-3">
                 {generatedMsg && (
-                  <span className="text-sm text-success">
-                    ✓ Added to shopping suggestions —{' '}
+                  <span className="text-sm text-success flex items-center gap-1">
+                    <CheckCircle size={16} weight="fill" /> Added to shopping suggestions —{' '}
                     <button className="underline" onClick={onNavigateToShopping}>view list</button>
                   </span>
                 )}
@@ -321,8 +321,8 @@ function MealCard({ meal, ingredientMap, onEdit, onDelete }: {
         <div className="flex items-start justify-between gap-2">
           <h3 className="card-title text-base leading-snug">{meal.name}</h3>
           <div className="flex gap-1 flex-shrink-0">
-            <button className="btn btn-ghost btn-xs" onClick={onEdit} aria-label="Edit">✏️</button>
-            <button className="btn btn-ghost btn-xs opacity-40 hover:opacity-100" onClick={onDelete} aria-label="Delete">🗑️</button>
+            <button className="btn btn-ghost btn-xs" onClick={onEdit} aria-label="Edit"><PencilSimple size={15} /></button>
+            <button className="btn btn-ghost btn-xs opacity-40 hover:opacity-100" onClick={onDelete} aria-label="Delete"><Trash size={15} /></button>
           </div>
         </div>
         {meal.notes && <p className="text-sm text-base-content/60 line-clamp-2 mt-1">{meal.notes}</p>}
@@ -402,7 +402,7 @@ function DroppableDay({ date, day, dayName, mealMap, onRemoveMeal, onClickAdd }:
         className="btn btn-ghost btn-xs w-full text-base-content/30 hover:text-base-content mt-1"
         onClick={onClickAdd}
         aria-label="Add meal"
-      >+</button>
+      ><Plus size={14} /></button>
     </div>
   )
 }

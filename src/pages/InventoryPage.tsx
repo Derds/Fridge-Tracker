@@ -7,6 +7,7 @@ import {
 } from '../store/inventoryStore'
 import { AddToInventoryModal } from '../components/AddToInventoryModal'
 import { CATEGORY_LABELS } from '../store/ingredientStore'
+import { Warning, Basket, Trash, Clock, SortAscending, Tag, Plus } from '@phosphor-icons/react'
 
 type SortMode = 'expiry' | 'category' | 'name'
 
@@ -36,13 +37,15 @@ export function InventoryPage() {
           <h1 className="text-2xl font-bold">My Fridge</h1>
           <p className="text-base-content/60 text-sm mt-1">{items.length} item{items.length !== 1 ? 's' : ''}</p>
         </div>
-        <button className="btn btn-primary btn-sm" onClick={() => setAddOpen(true)}>+ Add item</button>
+        <button className="btn btn-primary btn-sm gap-1" onClick={() => setAddOpen(true)}>
+          <Plus size={15} weight="bold" /> Add item
+        </button>
       </div>
 
       {/* Expiry warning banner */}
       {expiredItems.length > 0 && (
         <div className="alert alert-error mb-4">
-          <span>⚠️ {expiredItems.length} item{expiredItems.length !== 1 ? 's have' : ' has'} expired</span>
+          <Warning size={18} /> {expiredItems.length} item{expiredItems.length !== 1 ? 's have' : ' has'} expired
           <button className="btn btn-sm btn-outline btn-error ml-auto" onClick={() => setConfirmClearExpired(true)}>
             Clear expired
           </button>
@@ -55,7 +58,7 @@ export function InventoryPage() {
           <span className="text-sm text-base-content/50 self-center">Sort:</span>
           {(['expiry', 'name', 'category'] as SortMode[]).map(s => (
             <button key={s} className={`btn btn-xs ${sort === s ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSort(s)}>
-              {s === 'expiry' ? '⏰ Expiry' : s === 'name' ? '🔤 Name' : '📂 Category'}
+              {s === 'expiry' ? <><Clock size={13} /> Expiry</> : s === 'name' ? <><SortAscending size={13} /> Name</> : <><Tag size={13} /> Category</>}
             </button>
           ))}
         </div>
@@ -65,7 +68,7 @@ export function InventoryPage() {
 
       {!loading && items.length === 0 && (
         <div className="text-center py-16 text-base-content/50">
-          <p className="text-4xl mb-3">🧺</p>
+          <Basket size={48} weight="thin" className="mx-auto mb-3 opacity-40" />
           <p className="font-medium">Your fridge is empty</p>
           <p className="text-sm mt-1">Tap <strong>+ Add item</strong> to get started</p>
         </div>
@@ -160,7 +163,7 @@ function InventoryCard({ item, onDeplete, onRemove }: CardProps) {
           onClick={() => item.id != null && onRemove(item.id)}
           aria-label="Remove item"
         >
-          🗑️
+          <Trash size={15} />
         </button>
       </div>
     </div>
