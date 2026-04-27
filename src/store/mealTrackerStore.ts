@@ -8,6 +8,8 @@ interface MealTrackerStore {
   loading: boolean
   loadWeek: (weekStartDate: string) => Promise<void>
   initFromPlan: (weekStartDate: string, planDays: MealPlanDay[]) => Promise<void>
+  /** Merge plan changes into existing tracker — only updates slots the user hasn't manually edited */
+  syncFromPlan: (planDays: MealPlanDay[]) => Promise<void>
   updateSlot: (date: string, slot: MealSlot, patch: Partial<TrackedSlot>) => Promise<void>
   clearWeek: (weekStartDate: string) => Promise<void>
   exportCSV: (mealNameMap: Map<number, string>) => void
@@ -62,6 +64,36 @@ export const useMealTrackerStore = create<MealTrackerStore>((set, get) => ({
     const tracker: MealTrackerWeek = { weekStartDate, days, createdAt: now, updatedAt: now }
     const id = await db.mealTrackers.add(tracker)
     set({ tracker: { ...tracker, id: id as number } })
+  },
+
+  syncFromPlan: async (planDays) => {
+    const { tracker } = get()
+    if (!tracker?.id) return
+
+    const days = tracker.days.map(d => {
+      const planDay = planDays.find(p => p.date === d.date)
+      if (!planDay) return d
+
+      const slots = { ...d.slots }
+      for (const slot of MEAL_SLOTS) {
+        const existing = slots[slot]
+        // Only update if the slot hasn't been manually edited by the user
+        const isEdited = existing?.actualMealId || existing?.actualMealName || existing?.skipped || existing?.eatingOut
+        if (!isEdited) {
+          const mealIds = planDay.slots[slot] ?? []
+          slots[slot] = {
+            ...emptyTrackedSlot(),
+            plannedMealId: mealIds[0],
+            eatingOut: planDay.eatingOutSlots?.[slot] ?? false,
+          }
+        }
+      }
+      return { ...d, slots }
+    })
+
+    const updatedAt = new Date()
+    await db.mealTrackers.update(tracker.id, { days, updatedAt })
+    set({ tracker: { ...tracker, days, updatedAt } })
   },
 
   updateSlot: async (date, slot, patch) => {

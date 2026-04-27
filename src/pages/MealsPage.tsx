@@ -28,7 +28,7 @@ import {
   COOKING_TIME_LABELS, COOKING_TIME_BADGE,
   INGREDIENT_ROLE_BADGE_DISPLAY,
 } from '../types'
-import { ForkKnife, Plus, PencilSimple, Trash, X, ArrowLeft, ArrowRight, ShoppingCart, ChartBar, ArrowSquareOut, UploadSimple, Sparkle, Lightning, Link, CheckCircle, ClipboardText, Prohibit, WarningCircle, SmileyWink, Download, Upload } from '@phosphor-icons/react'
+import { ForkKnife, Plus, PencilSimple, Trash, X, ArrowLeft, ArrowRight, ShoppingCart, ChartBar, ArrowSquareOut, UploadSimple, Sparkle, Lightning, Link, CheckCircle, ClipboardText, Prohibit, WarningCircle, SmileyWink, Download, Upload, ArrowsClockwise } from '@phosphor-icons/react'
 import { CATEGORY_ICONS } from '../components/CatalogFilters'
 import { CATEGORY_LABELS, CATEGORY_ORDER } from '../store/ingredientStore'
 
@@ -100,7 +100,7 @@ export function MealsPage({ onNavigateToShopping }: Props) {
   const { items: inventory, loadInventory } = useInventoryStore()
   const { loadOrCreateList, bulkAddToActual } = useShoppingStore()
   const { mealsToTry, loadMealsToTry, addMealToTry, updateMealToTry, deleteMealToTry, markTried } = useMealToTryStore()
-  const { tracker, loadWeek: loadTrackerWeek, initFromPlan, updateSlot, clearWeek, exportCSV, importCSV } = useMealTrackerStore()
+  const { tracker, loadWeek: loadTrackerWeek, initFromPlan, syncFromPlan, updateSlot, clearWeek, exportCSV, importCSV } = useMealTrackerStore()
 
   const weekDays = useMemo(() => getWeekDays(weekStart), [weekStart])
 
@@ -549,6 +549,11 @@ export function MealsPage({ onNavigateToShopping }: Props) {
           onInitFromPlan={async () => {
             if (plan?.weekStartDate === trackerWeekStart && plan.days.length > 0) {
               await initFromPlan(trackerWeekStart, plan.days)
+            }
+          }}
+          onSyncFromPlan={async () => {
+            if (plan?.weekStartDate === trackerWeekStart && plan.days.length > 0) {
+              await syncFromPlan(plan.days)
             }
           }}
           onUpdateSlot={updateSlot}
@@ -1365,7 +1370,7 @@ const DAY_ABBREV = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 function MealTrackerView({
   trackerWeekStart, tracker, meals, mealMap, ingredientMap, planForWeek,
-  onNavWeek, onInitFromPlan, onUpdateSlot, onClear, onExportCSV, onImportCSV, importMsg
+  onNavWeek, onInitFromPlan, onSyncFromPlan, onUpdateSlot, onClear, onExportCSV, onImportCSV, importMsg
 }: {
   trackerWeekStart: string
   tracker: ReturnType<typeof useMealTrackerStore.getState>['tracker']
@@ -1375,6 +1380,7 @@ function MealTrackerView({
   planForWeek: { days: MealPlanDay[] } | null
   onNavWeek: (offset: number) => void
   onInitFromPlan: () => Promise<void>
+  onSyncFromPlan: () => Promise<void>
   onUpdateSlot: (date: string, slot: MealSlot, patch: Partial<TrackedSlot>) => Promise<void>
   onClear: () => Promise<void>
   onExportCSV: () => void
@@ -1383,8 +1389,12 @@ function MealTrackerView({
 }) {
   const weekDays = getTrackerWeekDays(trackerWeekStart)
   const [replaceFor, setReplaceFor] = useState<{ date: string; slot: MealSlot } | null>(null)
+  const [syncing, setSyncing] = useState(false)
   const importRef = React.useRef<HTMLInputElement>(null)
   const today = new Date().toISOString().slice(0, 10)
+  // Week is current or future if its last day (Sunday) >= today
+  const weekEndDate = weekDays[weekDays.length - 1]
+  const isCurrentOrFutureWeek = weekEndDate >= today
 
   // Default breakfast — stored in localStorage
   type DefaultBreakfast = { mealId?: number; name?: string }
@@ -1428,6 +1438,16 @@ function MealTrackerView({
         <div className="flex gap-2 items-center flex-wrap">
           {tracker && (
             <>
+              {hasPlan && isCurrentOrFutureWeek && (
+                <button
+                  className="btn btn-secondary btn-sm btn-outline gap-1.5"
+                  disabled={syncing}
+                  onClick={async () => { setSyncing(true); await onSyncFromPlan(); setSyncing(false) }}
+                  title="Update planned meals from your week plan — won't overwrite slots you've already tracked"
+                >
+                  <ArrowsClockwise size={14} className={syncing ? 'animate-spin' : ''} /> Sync from plan
+                </button>
+              )}
               <button className="btn btn-ghost btn-sm gap-1.5" onClick={onExportCSV}><Download size={14} /> Export CSV</button>
               <button className="btn btn-error btn-sm btn-outline gap-1" onClick={() => { if (confirm('Clear all tracking data for this week?')) onClear() }}><Trash size={14} /> Clear week</button>
             </>
